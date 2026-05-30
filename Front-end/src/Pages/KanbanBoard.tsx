@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, GripVertical, ArrowRight, X, Check, Trash2, PlusCircle, List, CalendarDays, Clock3, Repeat, Bell, ChevronDown, Tag, Users, Paperclip } from 'lucide-react';
 import DatePicker from 'react-datepicker';
-import { format, differenceInHours } from 'date-fns';
+import { format, differenceInHours, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, addYears, subYears, isSameMonth, isSameDay, isToday } from 'date-fns';
 import 'react-datepicker/dist/react-datepicker.css';
 import { mockTasks } from '@/data/mockData';
 
@@ -29,6 +29,10 @@ interface KanbanTask {
   priority: Priority;
   status: Status;
   progress: number;
+  order: number;
+  description?: string;
+  labels?: string[];
+  assignees?: string[];
   checklists?: Checklist[];
   startDate?: Date | null;
   dueDate?: Date | null;
@@ -41,12 +45,56 @@ interface DragItem {
   status: Status;
 }
 
-const initialTasks: KanbanTask[] = mockTasks.map((item) => ({
+const defaultKanbanTasks: KanbanTask[] = [
+  {
+    id: 'task-1',
+    title: 'Lập kế hoạch học tập tuần',
+    priority: 'HIGH',
+    status: 'TODO',
+    progress: 15,
+    order: 0,
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24),
+    description: 'Phân bổ thời gian học, deadline bài tập và ôn thi.',
+    labels: ['Planning', 'Study'],
+  },
+  {
+    id: 'task-2',
+    title: 'Hoàn thành project React',
+    priority: 'MEDIUM',
+    status: 'DOING',
+    progress: 55,
+    order: 0,
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 48),
+    description: 'Xây dựng giao diện và hoàn tất chức năng Kanban board.',
+    labels: ['Project'],
+  },
+  {
+    id: 'task-3',
+    title: 'Review và nộp báo cáo CSDL',
+    priority: 'LOW',
+    status: 'DONE',
+    progress: 100,
+    order: 0,
+    description: 'Đã hoàn thành và gửi báo cáo cho giảng viên.',
+    labels: ['Report'],
+  },
+];
+
+const sourceTasks = mockTasks.length > 0 ? mockTasks : defaultKanbanTasks;
+const initialTasks: KanbanTask[] = sourceTasks.map((item, index) => ({
   id: item.id,
   title: item.title,
-  priority: (item.priority || 'medium').toUpperCase() as Priority,
-  status: (item.status || 'todo').toUpperCase() as Status,
+  priority: ((item.priority || 'medium') as string).toUpperCase() as Priority,
+  status: ((item.status || 'todo') as string).toUpperCase() as Status,
   progress: item.progress || 0,
+  order: typeof item.order === 'number' ? item.order : index,
+  description: item.description,
+  labels: item.labels,
+  assignees: item.assignees,
+  startDate: item.startDate ?? null,
+  dueDate: item.dueDate ?? null,
+  recurring: item.recurring ?? null,
+  reminder: item.reminder ?? null,
 }));
 
 const priorityConfig: Record<Priority, { label: string; text: string; bg: string }> = {
@@ -61,20 +109,150 @@ const columnConfig: Record<Status, { label: string; count_color: string; bar: st
   DONE: { label: 'DONE', count_color: 'text-green-400', bar: 'bg-gradient-to-r from-green-500 to-emerald-400', header: 'bg-green-500/10' },
 };
 
+function TrelloCalendar({
+  displayMonth,
+  selectedDate,
+  onSelectDate,
+  onChangeMonth,
+}: {
+  displayMonth: Date;
+  selectedDate: Date | null;
+  onSelectDate: (date: Date) => void;
+  onChangeMonth: (date: Date) => void;
+}) {
+  const monthStart = startOfMonth(displayMonth);
+  const monthEnd = endOfMonth(monthStart);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+  const days: Date[] = [];
+
+  for (let day = calendarStart; day <= calendarEnd; day = addDays(day, 1)) {
+    days.push(day);
+  }
+
+  return (
+    <div className="max-h-[17rem] rounded-3xl border border-slate-800 bg-slate-950 text-slate-100 shadow-sm">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onChangeMonth(subYears(displayMonth, 1))}
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:border-slate-600 hover:text-white"
+            aria-label="Previous year"
+          >
+            <span className="text-base">«</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeMonth(subMonths(displayMonth, 1))}
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:border-slate-600 hover:text-white"
+            aria-label="Previous month"
+          >
+            <span className="text-base">‹</span>
+          </button>
+        </div>
+
+        <div className="text-xs font-semibold">{format(displayMonth, 'MMMM yyyy')}</div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onChangeMonth(addMonths(displayMonth, 1))}
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:border-slate-600 hover:text-white"
+            aria-label="Next month"
+          >
+            <span className="text-base">›</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeMonth(addYears(displayMonth, 1))}
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:border-slate-600 hover:text-white"
+            aria-label="Next year"
+          >
+            <span className="text-base">»</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-px bg-slate-900 px-2 py-1 text-[9px] uppercase tracking-[0.3em] text-slate-500">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
+          <div key={weekday} className="text-center font-semibold">
+            {weekday}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 p-1 bg-slate-950">
+        {days.map((day) => {
+          const isOutside = !isSameMonth(day, displayMonth);
+          const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
+          const isTodayDate = isToday(day);
+          const baseClasses =
+            'flex h-8 items-center justify-center rounded-2xl text-sm font-semibold transition';
+          const stateClasses = isSelected
+            ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.35)]'
+            : isTodayDate
+            ? 'border border-slate-600 text-white'
+            : isOutside
+            ? 'text-slate-500'
+            : 'text-slate-100 hover:bg-slate-900 hover:text-white';
+
+          return (
+            <button
+              key={day.toISOString()}
+              type="button"
+              onClick={() => {
+                onSelectDate(day);
+                if (isOutside) onChangeMonth(day);
+              }}
+              className={`${baseClasses} ${stateClasses}`}
+            >
+              {format(day, 'd')}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const nextStatus: Record<Status, Status> = { TODO: 'DOING', DOING: 'DONE', DONE: 'TODO' };
 
-function KanbanTaskCard({ task, moveTask, onSelect }: { task: KanbanTask; moveTask: (id: string, status: Status) => void; onSelect: (task: KanbanTask) => void }) {
+function KanbanTaskCard({ task, moveTask, onSelect }: { task: KanbanTask; moveTask: (id: string, status: Status, beforeId?: string) => void; onSelect: (task: KanbanTask) => void }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  const [, dropRef] = useDrop(() => ({
+    accept: 'TASK',
+    hover: (item: DragItem, monitor) => {
+      if (!ref.current) return;
+      if (item.id === task.id) return;
+      if (item.status === task.status && task.id === item.id) return;
+
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      if (item.status === task.status && hoverClientY < hoverMiddleY) return;
+
+      moveTask(item.id, task.status, task.id);
+      item.status = task.status;
+    },
+  }), [task.id, task.status, moveTask]);
+
   const [{ isDragging }, dragRef] = useDrag(() => ({
     type: 'TASK',
     item: { id: task.id, status: task.status } as DragItem,
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   }), [task.id, task.status]);
 
+  dragRef(dropRef(ref));
+
   const pc = priorityConfig[task.priority];
 
   return (
     <motion.div
-      ref={dragRef}
+      ref={ref}
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -97,20 +275,23 @@ function KanbanTaskCard({ task, moveTask, onSelect }: { task: KanbanTask; moveTa
           </button>
         </div>
       </div>
-      <p className={`text-sm font-medium leading-relaxed mb-3 ${task.status === 'DONE' ? 'line-through text-slate-500' : 'text-slate-950 dark:text-gray-200'}`}>
+      <p className={`text-sm font-medium leading-relaxed mb-2 ${task.status === 'DONE' ? 'line-through text-slate-500' : 'text-slate-950 dark:text-gray-200'}`}>
         {task.title}
       </p>
+      <div className="flex items-center justify-between gap-2 mb-3 text-xs text-slate-500 dark:text-gray-400">
+        {task.dueDate ? <span>Due {format(task.dueDate, 'MMM d')}</span> : <span>No due date</span>}
+        <span>{task.progress}%</span>
+      </div>
       <div className="flex items-center gap-2">
         <div className="flex-1 h-1 bg-slate-200 dark:bg-[#252d3d] rounded-full overflow-hidden">
           <div className={`h-full rounded-full ${pc.bg.replace('/15', '')}`} style={{ width: `${task.progress}%` }} />
         </div>
-        <span className="text-[10px] text-slate-500 dark:text-gray-400 flex-shrink-0">{task.progress}%</span>
       </div>
     </motion.div>
   );
 }
 
-function KanbanColumn({ status, tasks, moveTask, onAdd, onSelect }: { status: Status; tasks: KanbanTask[]; moveTask: (id: string, status: Status) => void; onAdd: (status: Status) => void; onSelect: (task: KanbanTask) => void }) {
+function KanbanColumn({ status, tasks, moveTask, onAdd, onSelect }: { status: Status; tasks: KanbanTask[]; moveTask: (id: string, status: Status, beforeId?: string) => void; onAdd: (status: Status) => void; onSelect: (task: KanbanTask) => void }) {
   const [{ isOver }, dropRef] = useDrop(() => ({
     accept: 'TASK',
     drop: (item: DragItem) => moveTask(item.id, status),
@@ -161,8 +342,28 @@ function KanbanColumn({ status, tasks, moveTask, onAdd, onSelect }: { status: St
   );
 }
 
+const STORAGE_KEY = 'kanban-board-tasks-v1';
+
+const loadStoredTasks = () => {
+  if (typeof window === 'undefined') return initialTasks;
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  if (!stored) return initialTasks;
+
+  try {
+    const parsed = JSON.parse(stored) as KanbanTask[];
+    return parsed.map((task, index) => ({
+      ...task,
+      order: typeof task.order === 'number' ? task.order : index,
+      dueDate: task.dueDate ? new Date(task.dueDate) : null,
+      startDate: task.startDate ? new Date(task.startDate) : null,
+    }));
+  } catch {
+    return initialTasks;
+  }
+};
+
 export function KanbanBoard() {
-  const [tasks, setTasks] = useState<KanbanTask[]>(initialTasks);
+  const [tasks, setTasks] = useState<KanbanTask[]>(loadStoredTasks);
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTaskStatus, setNewTaskStatus] = useState<Status>('TODO');
@@ -177,21 +378,45 @@ export function KanbanBoard() {
   const [startDateValue, setStartDateValue] = useState<Date | null>(null);
   const [dueEnabled, setDueEnabled] = useState(false);
   const [dueDateValue, setDueDateValue] = useState<Date | null>(null);
+  const [calendarSelection, setCalendarSelection] = useState<'start' | 'due'>('due');
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [recurringValue, setRecurringValue] = useState<string>('Never');
   const [reminderValue, setReminderValue] = useState<string>('1 Day before');
 
-  const moveTask = (id: string, status: Status) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              status,
-              progress: status === 'DONE' ? 100 : task.progress < 20 ? 20 : task.progress,
-            }
-          : task
-      )
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(tasks, (key, value) => (value instanceof Date ? value.toISOString() : value))
     );
+  }, [tasks]);
+
+  const moveTask = (id: string, status: Status, beforeId?: string) => {
+    setTasks((prev) => {
+      const taskToMove = prev.find((task) => task.id === id);
+      if (!taskToMove) return prev;
+
+      const updatedTask = {
+        ...taskToMove,
+        status,
+        progress: status === 'DONE' ? 100 : taskToMove.progress < 20 ? 20 : taskToMove.progress,
+      };
+
+      const destinationTasks = prev
+        .filter((task) => task.status === status && task.id !== id)
+        .sort((a, b) => a.order - b.order);
+
+      const rawIndex = beforeId ? destinationTasks.findIndex((task) => task.id === beforeId) : destinationTasks.length;
+      const insertIndex = rawIndex >= 0 ? rawIndex : destinationTasks.length;
+      const reordered = [
+        ...destinationTasks.slice(0, insertIndex),
+        updatedTask,
+        ...destinationTasks.slice(insertIndex),
+      ].map((task, index) => ({ ...task, order: index }));
+
+      const otherTasks = prev.filter((task) => task.status !== status && task.id !== id);
+      return [...otherTasks, ...reordered];
+    });
   };
   const openAddModal = (status: Status) => {
     setNewTaskStatus(status);
@@ -200,12 +425,21 @@ export function KanbanBoard() {
 
   const addTask = () => {
     if (!newTitle.trim()) return;
+    const nextOrder = tasks.filter((task) => task.status === newTaskStatus).length;
     const newTask: KanbanTask = {
       id: `new-${Date.now()}`,
       title: newTitle,
       priority: newPriority,
       status: newTaskStatus,
       progress: newTaskStatus === 'DONE' ? 100 : 0,
+      order: nextOrder,
+      description: '',
+      labels: [],
+      assignees: [],
+      startDate: null,
+      dueDate: null,
+      recurring: null,
+      reminder: null,
     };
     setTasks((prev) => [newTask, ...prev]);
     setNewTitle('');
@@ -216,6 +450,16 @@ export function KanbanBoard() {
   const updateTask = (updated: KanbanTask) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setSelectedTask(updated);
+  };
+
+  const updateSelectedTaskField = <K extends keyof KanbanTask>(field: K, value: KanbanTask[K]) => {
+    if (!selectedTask) return;
+    setSelectedTask({ ...selectedTask, [field]: value });
+  };
+
+  const saveSelectedTask = () => {
+    if (!selectedTask) return;
+    updateTask(selectedTask);
   };
 
   const addChecklistToTask = (taskId: string, title: string) => {
@@ -310,8 +554,10 @@ export function KanbanBoard() {
     if (!selectedTask) return;
     setStartEnabled(!!selectedTask.startDate);
     setStartDateValue(selectedTask.startDate || null);
-    setDueEnabled(!!selectedTask.dueDate);
+    setDueEnabled(true);
     setDueDateValue(selectedTask.dueDate || null);
+    setCalendarSelection(selectedTask.startDate ? 'start' : 'due');
+    setCalendarMonth(selectedTask.startDate || selectedTask.dueDate || new Date());
     setRecurringValue(selectedTask.recurring || 'Never');
     setReminderValue(selectedTask.reminder || '1 Day before');
     setShowDatesPopup(true);
@@ -374,7 +620,9 @@ export function KanbanBoard() {
               <KanbanColumn
                 key={colStatus}
                 status={colStatus}
-                tasks={tasks.filter((task) => task.status === colStatus)}
+                tasks={tasks
+                  .filter((task) => task.status === colStatus)
+                  .sort((a, b) => a.order - b.order)}
                 moveTask={moveTask}
                 onAdd={openAddModal}
                 onSelect={(task) => setSelectedTask(task)}
@@ -465,101 +713,190 @@ export function KanbanBoard() {
                             className="fixed inset-0 z-60 flex items-start justify-center overflow-y-auto bg-black/30 p-6"
                             onClick={(e) => { if (e.target === e.currentTarget) setShowDatesPopup(false); }}
                           >
-                            <div className="w-full max-w-md rounded-3xl bg-slate-950 text-slate-100 border border-slate-800 shadow-2xl shadow-black/50 p-4">
-                            <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-3">
-                              <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                                <CalendarDays className="w-4 h-4" />
-                                Dates
+                            <section className="w-full max-w-[520px] h-[calc(100vh-5rem)] rounded-3xl bg-slate-950 text-slate-100 border border-slate-800 shadow-2xl shadow-black/60 overflow-hidden">
+                              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+                                <div>
+                                  <h2 className="text-base font-semibold">Dates</h2>
+                                  <p className="text-xs text-slate-500">Set start date, due date, reminders, and recurring options.</p>
+                                </div>
+                                <button onClick={() => setShowDatesPopup(false)} className="rounded-full p-2 text-slate-300 hover:bg-slate-900 transition">
+                                  <X className="w-4 h-4" />
+                                </button>
                               </div>
-                              <button onClick={() => setShowDatesPopup(false)} className="rounded-full p-2 bg-slate-900 hover:bg-slate-800 transition">
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
 
-                            <div className="mb-3 rounded-3xl bg-slate-900 p-3 border border-slate-800">
-                              <DatePicker
-                                inline
-                                selected={dueDateValue || new Date()}
-                                onChange={(d: Date | null) => setDueDateValue(d)}
-                                calendarClassName="rounded-3xl border border-slate-800 bg-slate-950 text-slate-100"
-                              />
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-2 rounded-3xl bg-slate-900 p-3 border border-slate-800">
-                                <input type="checkbox" checked={startEnabled} onChange={(e) => setStartEnabled(e.target.checked)} className="h-4 w-4 rounded border-slate-700 bg-slate-700 text-blue-500" />
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500 mb-1">
-                                    <CalendarDays className="w-3.5 h-3.5" />
-                                    Start date
+                              <form className="flex h-full flex-col" onSubmit={(e) => { e.preventDefault(); if (selectedTask) saveDatesToTask(selectedTask.id); }}>
+                                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-5 pb-20">
+                                  <div>
+                                    <TrelloCalendar
+                                      displayMonth={calendarMonth}
+                                      selectedDate={calendarSelection === 'start' ? startDateValue : dueDateValue}
+                                      onSelectDate={(date) => {
+                                        if (calendarSelection === 'start') {
+                                          setStartEnabled(true);
+                                          setStartDateValue(date);
+                                        } else {
+                                          setDueEnabled(true);
+                                          setDueDateValue(date);
+                                        }
+                                      }}
+                                      onChangeMonth={(date) => setCalendarMonth(startOfMonth(date))}
+                                    />
                                   </div>
-                                  <DatePicker
-                                    selected={startDateValue}
-                                    onChange={(d: Date | null) => setStartDateValue(d)}
-                                    placeholderText="M/D/YYYY"
-                                    dateFormat="P"
-                                    className={`w-full rounded-2xl border px-3 py-2 text-sm ${startEnabled ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-800 bg-slate-950 text-slate-500'}`}
-                                    disabled={!startEnabled}
-                                  />
-                                </div>
-                              </div>
 
-                              <div className="flex items-center gap-2 rounded-3xl bg-slate-900 p-3 border border-slate-800">
-                                <input type="checkbox" checked={dueEnabled} onChange={(e) => setDueEnabled(e.target.checked)} className="h-4 w-4 rounded border-slate-700 bg-slate-700 text-blue-500" />
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500 mb-1">
-                                    <Clock3 className="w-3.5 h-3.5" />
-                                    Due date
+                                  <div className="space-y-4">
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between gap-3">
+                                        <div>
+                                          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Start date</p>
+                                          <p className="mt-1 text-sm text-slate-300">Set when work should begin.</p>
+                                        </div>
+                                        <label className="flex items-center gap-2 text-sm text-slate-300">
+                                          <input
+                                            type="checkbox"
+                                            checked={startEnabled}
+                                            onChange={(e) => {
+                                              setStartEnabled(e.target.checked);
+                                              if (e.target.checked) setCalendarSelection('start');
+                                              else if (calendarSelection === 'start') setCalendarSelection('due');
+                                            }}
+                                            className="h-4 w-4 rounded border-slate-700 bg-slate-700 text-blue-500"
+                                          />
+                                          Enabled
+                                        </label>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setStartEnabled(true);
+                                          setCalendarSelection('start');
+                                        }}
+                                        className={`w-full rounded-2xl border px-3 py-2.5 text-left text-sm ${calendarSelection === 'start' ? 'border-blue-500 bg-slate-950 text-white shadow' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:text-white'}`}
+                                      >
+                                        <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Start date</div>
+                                        <div className="mt-1 text-sm font-medium text-white">
+                                          {startDateValue ? format(startDateValue, 'M/d/yyyy') : 'No start date set'}
+                                        </div>
+                                      </button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div>
+                                          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Due date</p>
+                                          <p className="mt-1 text-sm text-slate-300">Choose a deadline and time.</p>
+                                        </div>
+                                        <label className="flex items-center gap-2 text-sm text-slate-300">
+                                          <input
+                                            type="checkbox"
+                                            checked={dueEnabled}
+                                            onChange={(e) => {
+                                              setDueEnabled(e.target.checked);
+                                              if (e.target.checked) setCalendarSelection('due');
+                                            }}
+                                            className="h-4 w-4 rounded border-slate-700 bg-slate-700 text-blue-500"
+                                          />
+                                          Enabled
+                                        </label>
+                                      </div>
+                                      <div className="grid gap-2 md:grid-cols-[1.4fr_0.6fr]">
+                                        <button
+                                          type="button"
+                                          onClick={() => setCalendarSelection('due')}
+                                          className={`rounded-2xl border px-3 py-2.5 text-left text-sm ${calendarSelection === 'due' ? 'border-blue-500 bg-slate-950 text-white shadow' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:text-white'}`}
+                                        >
+                                          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Due date</div>
+                                          <div className="mt-1 text-sm font-medium text-white">
+                                            {dueDateValue ? format(dueDateValue, 'M/d/yyyy') : 'No due date set'}
+                                          </div>
+                                        </button>
+                                        <select
+                                          value={dueDateValue ? format(dueDateValue, 'p') : '12:00 AM'}
+                                          onChange={(e) => {
+                                            if (!dueEnabled) return;
+                                            const [time, meridiem] = e.target.value.split(' ');
+                                            const [hour, minute] = time.split(':').map(Number);
+                                            const date = dueDateValue || new Date();
+                                            const adjusted = new Date(date);
+                                            const hour24 = meridiem === 'PM' && hour !== 12 ? hour + 12 : meridiem === 'AM' && hour === 12 ? 0 : hour;
+                                            adjusted.setHours(hour24, minute, 0, 0);
+                                            setDueDateValue(adjusted);
+                                          }}
+                                          disabled={!dueEnabled}
+                                          className="rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                                        >
+                                          {['12:00 AM', '6:00 AM', '12:00 PM', '6:00 PM'].map((timeValue) => (
+                                            <option key={timeValue} value={timeValue}>{timeValue}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                      <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Recurring</p>
+                                      <select
+                                        value={recurringValue}
+                                        onChange={(e) => setRecurringValue(e.target.value)}
+                                        className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                                      >
+                                        <option>Never</option>
+                                        <option>Daily</option>
+                                        <option>Weekly</option>
+                                        <option>Monthly</option>
+                                      </select>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                      <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Set due date reminder</p>
+                                      <select
+                                        value={reminderValue}
+                                        onChange={(e) => setReminderValue(e.target.value)}
+                                        className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                                      >
+                                        <option>1 Day before</option>
+                                        <option>1 Hour before</option>
+                                        <option>At time of due date</option>
+                                      </select>
+                                    </div>
                                   </div>
-                                  <DatePicker
-                                    selected={dueDateValue}
-                                    onChange={(d: Date | null) => setDueDateValue(d)}
-                                    showTimeSelect
-                                    timeIntervals={15}
-                                    dateFormat="Pp"
-                                    className={`w-full rounded-2xl border px-3 py-2 text-sm ${dueEnabled ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-800 bg-slate-950 text-slate-500'}`}
-                                    disabled={!dueEnabled}
-                                  />
                                 </div>
-                              </div>
 
-                              <div className="rounded-3xl bg-slate-900 p-3 border border-slate-800">
-                                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">
-                                  <Repeat className="w-3.5 h-3.5" />
-                                  Recurring
+                                <div className="sticky bottom-0 z-20 bg-slate-950 px-4 pb-4 pt-4">
+                                  <p className="text-xs text-slate-500 mb-3">Reminders will be sent to all members and watchers of this card.</p>
+
+                                  <div className="grid gap-3">
+                                    <button
+                                      type="submit"
+                                      className="w-full rounded-2xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => selectedTask && removeDatesFromTask(selectedTask.id)}
+                                      className="w-full rounded-2xl border border-slate-800 bg-slate-900 py-3 text-sm text-slate-300 hover:bg-slate-800 transition"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
                                 </div>
-                                <select value={recurringValue} onChange={(e) => setRecurringValue(e.target.value)} className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white">
-                                  <option>Never</option>
-                                  <option>Daily</option>
-                                  <option>Weekly</option>
-                                  <option>Monthly</option>
-                                </select>
-                              </div>
-
-                              <div className="rounded-3xl bg-slate-900 p-3 border border-slate-800">
-                                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">
-                                  <Bell className="w-3.5 h-3.5" />
-                                  Set due date reminder
-                                </div>
-                                <select value={reminderValue} onChange={(e) => setReminderValue(e.target.value)} className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white">
-                                  <option>1 Day before</option>
-                                  <option>1 Hour before</option>
-                                  <option>At time of due date</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 flex gap-3">
-                              <button onClick={() => saveDatesToTask(selectedTask.id)} className="flex-1 rounded-2xl bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition">Save</button>
-                              <button onClick={() => removeDatesFromTask(selectedTask.id)} className="flex-1 rounded-2xl border border-slate-800 py-2 text-sm text-slate-300 hover:bg-slate-800 transition">Remove</button>
-                            </div>
-                          </div>
-                        </motion.div>
+                              </form>
+                            </section>
+                          </motion.div>
                         )}
 
                         <div className="mt-6">
-                          <div className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Description</div>
-                          <textarea placeholder="Add a more detailed description..." className="w-full min-h-[120px] bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#252d3d] rounded-lg p-3 text-sm text-slate-700 dark:text-gray-300" />
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-white">Description</div>
+                            <button onClick={saveSelectedTask} className="text-xs rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                              Save description
+                            </button>
+                          </div>
+                          <textarea
+                            value={selectedTask.description || ''}
+                            onChange={(e) => updateSelectedTaskField('description', e.target.value)}
+                            placeholder="Add a more detailed description..."
+                            className="w-full min-h-[120px] bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#252d3d] rounded-lg p-3 text-sm text-slate-700 dark:text-gray-300"
+                          />
                         </div>
 
                         {/* Checklist list */}
