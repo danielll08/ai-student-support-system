@@ -22,68 +22,7 @@ export const SUBJECTS = [
   'Web Development', 'Mobile Dev', 'DevOps', 'Software Engineering'
 ];
 
-export const mockTasks: Task[] = [
-  {
-    id: 't1', title: 'Hoàn thành bài tập Java OOP', description: 'Xây dựng hệ thống quản lý sinh viên bằng Java với các nguyên lý OOP',
-    priority: 'high', status: 'doing', deadline: '2024-12-15T23:59:00',
-    subject: 'Java', tags: ['Java', 'OOP'], progress: 60,
-    createdAt: '2024-12-01', updatedAt: '2024-12-10', userId: 'user-1'
-  },
-  {
-    id: 't2', title: 'Nghiên cứu về Machine Learning', description: 'Đọc tài liệu và thực hành các thuật toán ML cơ bản',
-    priority: 'medium', status: 'todo', deadline: '2024-12-20T23:59:00',
-    subject: 'Machine Learning', tags: ['ML', 'AI', 'Python'], progress: 20,
-    createdAt: '2024-12-02', updatedAt: '2024-12-02', userId: 'user-1'
-  },
-  {
-    id: 't3', title: 'Submit báo cáo môn CSDL', description: 'Viết báo cáo về thiết kế cơ sở dữ liệu cho dự án cuối kỳ',
-    priority: 'high', status: 'todo', deadline: '2024-12-12T23:59:00',
-    subject: 'Database', tags: ['SQL', 'Database'], progress: 10,
-    createdAt: '2024-12-01', updatedAt: '2024-12-05', userId: 'user-1'
-  },
-  {
-    id: 't4', title: 'Ôn tập Giải tích chương 3-4', description: 'Ôn tập tích phân và vi phân cho kỳ thi giữa kỳ',
-    priority: 'medium', status: 'todo', deadline: '2024-12-18T08:00:00',
-    subject: 'Math', tags: ['Math', 'Calculus'], progress: 35,
-    createdAt: '2024-12-03', updatedAt: '2024-12-08', userId: 'user-1'
-  },
-  {
-    id: 't5', title: 'Làm project React cuối kỳ', description: 'Xây dựng web app hoàn chỉnh bằng ReactJS',
-    priority: 'high', status: 'doing', deadline: '2024-12-25T23:59:00',
-    subject: 'React', tags: ['React', 'Frontend', 'Web'], progress: 45,
-    createdAt: '2024-11-28', updatedAt: '2024-12-10', userId: 'user-1'
-  },
-  {
-    id: 't6', title: 'Đọc tài liệu Data Structures', description: 'Nghiên cứu cấu trúc dữ liệu: Trees, Graphs, Hash Tables',
-    priority: 'low', status: 'done', deadline: '2024-12-08T23:59:00',
-    subject: 'Data Structures', tags: ['DSA', 'Algorithms'], progress: 100,
-    createdAt: '2024-11-25', updatedAt: '2024-12-08', userId: 'user-1'
-  },
-  {
-    id: 't7', title: 'Luyện tập IELTS Speaking', description: 'Luyện tập Speaking Part 2 & 3 cho kỳ thi IELTS',
-    priority: 'low', status: 'done', deadline: '2024-12-05T23:59:00',
-    subject: 'English', tags: ['IELTS', 'English'], progress: 100,
-    createdAt: '2024-11-20', updatedAt: '2024-12-05', userId: 'user-1'
-  },
-  {
-    id: 't8', title: 'Cài đặt thuật toán sắp xếp', description: 'Implement QuickSort, MergeSort, HeapSort bằng Python',
-    priority: 'medium', status: 'doing', deadline: '2024-12-16T23:59:00',
-    subject: 'Algorithms', tags: ['Python', 'Algorithms', 'DSA'], progress: 70,
-    createdAt: '2024-12-04', updatedAt: '2024-12-11', userId: 'user-1'
-  },
-  {
-    id: 't9', title: 'Viết unit test cho project', description: 'Viết JUnit test cho các module trong project Java',
-    priority: 'low', status: 'todo', deadline: '2024-12-22T23:59:00',
-    subject: 'Java', tags: ['Java', 'Testing'], progress: 0,
-    createdAt: '2024-12-05', updatedAt: '2024-12-05', userId: 'user-1'
-  },
-  {
-    id: 't10', title: 'Thuyết trình môn KTPM', description: 'Chuẩn bị slides và báo cáo về Software Testing',
-    priority: 'high', status: 'todo', deadline: '2024-12-14T09:00:00',
-    subject: 'Software Engineering', tags: ['SE', 'Presentation'], progress: 25,
-    createdAt: '2024-12-06', updatedAt: '2024-12-10', userId: 'user-1'
-  },
-];
+export const mockTasks: Task[] = [];
 
 export const mockEvents: CalendarEvent[] = [
   {
