@@ -131,13 +131,13 @@ function TrelloCalendar({
   }
 
   return (
-    <div className="max-h-[17rem] rounded-3xl border border-slate-800 bg-slate-950 text-slate-100 shadow-sm">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800">
+    <div className="max-h-[17rem] rounded-3xl border border-slate-200 bg-white text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => onChangeMonth(subYears(displayMonth, 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:border-slate-600 hover:text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
             aria-label="Previous year"
           >
             <span className="text-base">«</span>
@@ -145,20 +145,20 @@ function TrelloCalendar({
           <button
             type="button"
             onClick={() => onChangeMonth(subMonths(displayMonth, 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:border-slate-600 hover:text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
             aria-label="Previous month"
           >
             <span className="text-base">‹</span>
           </button>
         </div>
 
-        <div className="text-xs font-semibold">{format(displayMonth, 'MMMM yyyy')}</div>
+        <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">{format(displayMonth, 'MMMM yyyy')}</div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => onChangeMonth(addMonths(displayMonth, 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:border-slate-600 hover:text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
             aria-label="Next month"
           >
             <span className="text-base">›</span>
@@ -166,7 +166,7 @@ function TrelloCalendar({
           <button
             type="button"
             onClick={() => onChangeMonth(addYears(displayMonth, 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-300 transition hover:border-slate-600 hover:text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
             aria-label="Next year"
           >
             <span className="text-base">»</span>
@@ -174,7 +174,7 @@ function TrelloCalendar({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-slate-900 px-2 py-1 text-[9px] uppercase tracking-[0.3em] text-slate-500">
+      <div className="grid grid-cols-7 gap-px bg-slate-100 px-2 py-1 text-[9px] uppercase tracking-[0.3em] text-slate-500 dark:bg-slate-900 dark:text-slate-400">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
           <div key={weekday} className="text-center font-semibold">
             {weekday}
@@ -182,7 +182,7 @@ function TrelloCalendar({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 p-1 bg-slate-950">
+      <div className="grid grid-cols-7 gap-1 p-1 bg-slate-100 dark:bg-slate-950">
         {days.map((day) => {
           const isOutside = !isSameMonth(day, displayMonth);
           const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
@@ -192,10 +192,10 @@ function TrelloCalendar({
           const stateClasses = isSelected
             ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.35)]'
             : isTodayDate
-            ? 'border border-slate-600 text-white'
+            ? 'border border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-600 dark:bg-slate-950 dark:text-white'
             : isOutside
-            ? 'text-slate-500'
-            : 'text-slate-100 hover:bg-slate-900 hover:text-white';
+            ? 'text-slate-400 bg-transparent dark:text-slate-500'
+            : 'bg-white text-slate-950 hover:bg-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900';
 
           return (
             <button
@@ -278,7 +278,7 @@ function KanbanTaskCard({ task, moveTask, onSelect }: { task: KanbanTask; moveTa
       <p className={`text-sm font-medium leading-relaxed mb-2 ${task.status === 'DONE' ? 'line-through text-slate-500' : 'text-slate-950 dark:text-gray-200'}`}>
         {task.title}
       </p>
-      <div className="flex items-center justify-between gap-2 mb-3 text-xs text-slate-500 dark:text-gray-400">
+      <div className="flex items-center justify-between gap-2 mb-3 text-xs text-slate-500 dark:text-slate-400">
         {task.dueDate ? <span>Due {format(task.dueDate, 'MMM d')}</span> : <span>No due date</span>}
         <span>{task.progress}%</span>
       </div>
@@ -302,7 +302,7 @@ function KanbanColumn({ status, tasks, moveTask, onAdd, onSelect }: { status: St
 
   return (
     <div ref={dropRef} className={`flex-1 flex flex-col min-w-0 rounded-2xl overflow-hidden border transition ${isOver ? 'border-blue-500 shadow-[0_0_0_6px_rgba(59,130,246,0.08)] bg-blue-50 dark:bg-[#0b1220]' : 'border-slate-200 dark:border-[#252d3d]'} bg-slate-50 dark:bg-[#171c28]`}>
-      <div className={`px-4 py-3 border-b border-slate-200 dark:border-[#252d3d] ${cfg.header}`}>
+      <div className={`px-4 py-3 border-b border-slate-200 dark:border-[#252d3d] bg-slate-100 dark:bg-[#111827] ${cfg.header}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${cfg.bar.split(' ')[0]}`} />
@@ -606,7 +606,7 @@ export function KanbanBoard() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="p-5 h-full flex flex-col">
+      <div className="p-5 h-full flex flex-col bg-slate-50 dark:bg-[#090d13] transition-colors duration-300">
         <div className="flex items-start justify-between mb-5">
           <div>
             <h1 className="text-xl font-bold text-slate-950 dark:text-white">Kanban Board</h1>
@@ -636,16 +636,16 @@ export function KanbanBoard() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-start justify-center p-6 bg-black/40 backdrop-blur-sm"
+                className="fixed inset-0 z-50 flex items-center justify-center p-7 bg-black/40 backdrop-blur-sm"
                 onClick={(e) => { if (e.target === e.currentTarget) setSelectedTask(null); }}
               >
-                <motion.div initial={{ scale: 0.98, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.98, y: 8 }} className="w-full max-w-4xl bg-white dark:bg-[#0f1720] rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-[#252d3d]">
+                <motion.div initial={{ scale: 0.98, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.98, y: 8 }} className="w-full max-w-[90rem] bg-white dark:bg-[#0f1720] rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-[#252d3d]">
                   <div className="flex">
-                    <div className="flex-1 p-6">
+                    <div className="flex-1 p-38">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">{selectedTask.title}</h2>
-                          <p className="text-xs text-slate-500 dark:text-gray-400 mt-2">{selectedTask.priority}</p>
+                          <h2 className="text-3xl font-semibold text-slate-950 dark:text-white">{selectedTask.title}</h2>
+                          <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">{selectedTask.priority}</p>
                         </div>
                         <button onClick={() => setSelectedTask(null)} className="text-slate-500 hover:text-white p-2 rounded-full">
                           <X className="w-5 h-5" />
@@ -653,37 +653,46 @@ export function KanbanBoard() {
                       </div>
                       <div className="relative">
                         <div className="flex flex-wrap gap-2 mt-4">
-                          <button className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-sm text-slate-300 hover:border-slate-500 hover:text-white transition">
-                            <Plus className="w-4 h-4" />
+                          <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-900 hover:border-slate-300 hover:bg-slate-200 transition dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800">
+                            <Plus className="w-5 h-5" />
                             Add
                           </button>
-                          <button className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-sm text-slate-300 hover:border-slate-500 hover:text-white transition">
-                            <Tag className="w-4 h-4" />
+                          <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-900 hover:border-slate-300 hover:bg-slate-200 transition dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800">
+                            <Tag className="w-5 h-5" />
                             Labels
                           </button>
-                          <button onClick={() => openDatesPopup()} className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-sm text-slate-300 hover:border-slate-500 hover:text-white transition">
-                            <CalendarDays className="w-4 h-4" />
-                            Dates
-                          </button>
-                          <button onClick={() => setShowAddChecklist(true)} className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-sm text-slate-300 hover:border-slate-500 hover:text-white transition">
-                            <Check className="w-4 h-4" />
+                          {!selectedTask.startDate && !selectedTask.dueDate && (
+                            <button
+                              onClick={() => openDatesPopup()}
+                              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-sm text-slate-900 hover:border-slate-300 hover:bg-slate-200 transition dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+                            >
+                              <CalendarDays className="w-4 h-4" />
+                              Dates
+                            </button>
+                          )}
+                          <button onClick={() => setShowAddChecklist(true)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-900 hover:border-slate-300 hover:bg-slate-200 transition dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800">
+                            <Check className="w-5 h-5" />
                             Checklist
                           </button>
-                          <button className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-sm text-slate-300 hover:border-slate-500 hover:text-white transition">
-                            <Users className="w-4 h-4" />
+                          <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-900 hover:border-slate-300 hover:bg-slate-200 transition dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800">
+                            <Users className="w-5 h-5" />
                             Members
                           </button>
-                          <button className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-sm text-slate-300 hover:border-slate-500 hover:text-white transition">
-                            <Paperclip className="w-4 h-4" />
+                          <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-900 hover:border-slate-300 hover:bg-slate-200 transition dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800">
+                            <Paperclip className="w-5 h-5" />
                             Attachment
                           </button>
                         </div>
                         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                          <div className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-2 text-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => openDatesPopup()}
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-900 transition hover:bg-slate-200 active:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800"
+                          >
                             <CalendarDays className="w-4 h-4" />
-                            <span>{selectedTask.dueDate ? format(selectedTask.dueDate, 'MMM d, p') : 'No due date'}</span>
-                          </div>
-                          {selectedTask.dueDate && isDueSoon && (
+                            <span>{(selectedTask.dueDate || selectedTask.startDate) ? format(selectedTask.dueDate || selectedTask.startDate!, 'MMM d, p') : 'No due date'}</span>
+                          </button>
+                          {(selectedTask.dueDate || selectedTask.startDate) && isDueSoon && (
                             <div className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-2 py-1 text-[11px] font-semibold text-slate-950">
                               Due soon
                               <ChevronDown className="w-3 h-3" />
@@ -710,10 +719,10 @@ export function KanbanBoard() {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="fixed inset-0 z-60 flex items-start justify-center overflow-y-auto bg-black/30 p-6"
+                            className="fixed inset-0 z-60 flex items-start justify-center overflow-y-auto bg-black/30 p-[44px]"
                             onClick={(e) => { if (e.target === e.currentTarget) setShowDatesPopup(false); }}
                           >
-                            <section className="w-full max-w-[520px] h-[calc(100vh-5rem)] rounded-3xl bg-slate-950 text-slate-100 border border-slate-800 shadow-2xl shadow-black/60 overflow-hidden">
+                            <section className="w-full max-w-[520px] h-[calc(100vh-5rem)] rounded-3xl bg-white text-slate-950 border border-slate-200 shadow-2xl shadow-black/10 overflow-hidden dark:bg-[#020612] dark:text-slate-100 dark:border-slate-800">
                               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
                                 <div>
                                   <h2 className="text-base font-semibold">Dates</h2>
@@ -725,7 +734,7 @@ export function KanbanBoard() {
                               </div>
 
                               <form className="flex h-full flex-col" onSubmit={(e) => { e.preventDefault(); if (selectedTask) saveDatesToTask(selectedTask.id); }}>
-                                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-5 pb-20">
+                                <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-5 pb-20">
                                   <div>
                                     <TrelloCalendar
                                       displayMonth={calendarMonth}
@@ -743,8 +752,8 @@ export function KanbanBoard() {
                                     />
                                   </div>
 
-                                  <div className="space-y-4">
-                                    <div className="space-y-2">
+                                  <div className="space-y-5">
+                                    <div className="space-y-3 border-b border-slate-800 pb-4 pt-4">
                                       <div className="flex items-center justify-between gap-3">
                                         <div>
                                           <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Start date</p>
@@ -764,23 +773,22 @@ export function KanbanBoard() {
                                           Enabled
                                         </label>
                                       </div>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setStartEnabled(true);
-                                          setCalendarSelection('start');
-                                        }}
-                                        className={`w-full rounded-2xl border px-3 py-2.5 text-left text-sm ${calendarSelection === 'start' ? 'border-blue-500 bg-slate-950 text-white shadow' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:text-white'}`}
-                                      >
-                                        <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Start date</div>
-                                        <div className="mt-1 text-sm font-medium text-white">
-                                          {startDateValue ? format(startDateValue, 'M/d/yyyy') : 'No start date set'}
-                                        </div>
-                                      </button>
+                                      <div className="mt-5">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setStartEnabled(true);
+                                            setCalendarSelection('start');
+                                          }}
+                                          className={`w-full rounded-2xl border px-3 py-2 text-left text-sm ${calendarSelection === 'start' ? 'border-blue-500 bg-slate-100 text-slate-950' : 'border-slate-300 bg-slate-100 text-slate-950 hover:border-slate-400 hover:bg-slate-200 active:bg-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800'}`}
+                                        >
+                                          {startDateValue ? format(startDateValue, 'M/d/yyyy') : <span className="text-slate-400">M/D/YYYY</span>}
+                                        </button>
+                                      </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                      <div className="flex items-center justify-between gap-2">
+                                    <div className="space-y-3 border-b border-slate-800 pb-4">
+                                      <div className="flex items-center justify-between gap-3">
                                         <div>
                                           <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Due date</p>
                                           <p className="mt-1 text-sm text-slate-300">Choose a deadline and time.</p>
@@ -798,16 +806,13 @@ export function KanbanBoard() {
                                           Enabled
                                         </label>
                                       </div>
-                                      <div className="grid gap-2 md:grid-cols-[1.4fr_0.6fr]">
+                                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                                         <button
                                           type="button"
                                           onClick={() => setCalendarSelection('due')}
-                                          className={`rounded-2xl border px-3 py-2.5 text-left text-sm ${calendarSelection === 'due' ? 'border-blue-500 bg-slate-950 text-white shadow' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:text-white'}`}
+                                          className={`flex-1 rounded-2xl border px-3 py-2 text-left text-sm ${calendarSelection === 'due' ? 'border-blue-500 bg-slate-100 text-slate-950' : 'border-slate-300 bg-slate-100 text-slate-950 hover:border-slate-400 hover:bg-slate-200 hover:text-slate-950 active:bg-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800'}`}
                                         >
-                                          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Due date</div>
-                                          <div className="mt-1 text-sm font-medium text-white">
-                                            {dueDateValue ? format(dueDateValue, 'M/d/yyyy') : 'No due date set'}
-                                          </div>
+                                          {dueDateValue ? format(dueDateValue, 'M/d/yyyy') : <span className="text-slate-400">No due date set</span>}
                                         </button>
                                         <select
                                           value={dueDateValue ? format(dueDateValue, 'p') : '12:00 AM'}
@@ -822,7 +827,7 @@ export function KanbanBoard() {
                                             setDueDateValue(adjusted);
                                           }}
                                           disabled={!dueEnabled}
-                                          className="rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                                          className="w-full rounded-2xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
                                         >
                                           {['12:00 AM', '6:00 AM', '12:00 PM', '6:00 PM'].map((timeValue) => (
                                             <option key={timeValue} value={timeValue}>{timeValue}</option>
@@ -831,12 +836,12 @@ export function KanbanBoard() {
                                       </div>
                                     </div>
 
-                                    <div className="space-y-3">
+                                    <div className="space-y-3 border-b border-slate-800 pb-4">
                                       <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Recurring</p>
                                       <select
                                         value={recurringValue}
                                         onChange={(e) => setRecurringValue(e.target.value)}
-                                        className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                                        className="w-full rounded-2xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-950 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                                       >
                                         <option>Never</option>
                                         <option>Daily</option>
@@ -850,7 +855,7 @@ export function KanbanBoard() {
                                       <select
                                         value={reminderValue}
                                         onChange={(e) => setReminderValue(e.target.value)}
-                                        className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                                        className="w-full rounded-2xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-950 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                                       >
                                         <option>1 Day before</option>
                                         <option>1 Hour before</option>
@@ -860,8 +865,8 @@ export function KanbanBoard() {
                                   </div>
                                 </div>
 
-                                <div className="sticky bottom-0 z-20 bg-slate-950 px-4 pb-4 pt-4">
-                                  <p className="text-xs text-slate-500 mb-3">Reminders will be sent to all members and watchers of this card.</p>
+                                <div className="sticky bottom-0 z-20 bg-white px-4 pb-4 pt-4 dark:bg-[#020612]">
+                                  <p className="text-xs text-slate-500 mb-3 dark:text-slate-400">Reminders will be sent to all members and watchers of this card.</p>
 
                                   <div className="grid gap-3">
                                     <button
@@ -873,7 +878,7 @@ export function KanbanBoard() {
                                     <button
                                       type="button"
                                       onClick={() => selectedTask && removeDatesFromTask(selectedTask.id)}
-                                      className="w-full rounded-2xl border border-slate-800 bg-slate-900 py-3 text-sm text-slate-300 hover:bg-slate-800 transition"
+                                      className="w-full rounded-2xl border border-slate-300 bg-slate-100 py-3 text-sm text-slate-900 hover:bg-slate-200 transition dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
                                     >
                                       Remove
                                     </button>
@@ -947,7 +952,7 @@ export function KanbanBoard() {
                         </div>
                       </div>
                     </div>
-                    <div className="w-96 border-l border-slate-200 dark:border-[#252d3d] bg-slate-50 dark:bg-[#0b1116] p-4">
+                    <div className="w-[30rem] border-l border-slate-200 dark:border-[#252d3d] bg-slate-50 dark:bg-[#0b1116] p-5">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm font-semibold text-slate-900 dark:text-white">Comments and activity</div>
                         <button className="text-xs px-2 py-1 rounded-md border">Show details</button>
