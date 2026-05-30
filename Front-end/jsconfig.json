@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    
+    /* Ép bộ biên dịch TypeScript nhận diện Alias đường dẫn kiểu mới */
+    "baseUrl": ".",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    
+    /* Tắt cảnh báo lỗi thời */
+    "ignoreDeprecations": "6.0",
+
+    /* Định nghĩa alias đường dẫn */
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}
