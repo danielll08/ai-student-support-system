@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, GripVertical, ArrowRight, X, Check, Trash2, PlusCircle, List, CalendarDays, Clock3, Repeat, Bell, ChevronDown, Tag, Users, Paperclip } from 'lucide-react';
+import { Plus, GripVertical, ArrowRight, X, Check, Trash2, PlusCircle, List, CalendarDays, Clock3, Repeat, Bell, ChevronDown, Tag, Users, Paperclip, MessageCircle } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import { format, differenceInHours, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, addYears, subYears, isSameMonth, isSameDay, isToday } from 'date-fns';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -218,7 +218,7 @@ function TrelloCalendar({
 
 const nextStatus: Record<Status, Status> = { TODO: 'DOING', DOING: 'DONE', DONE: 'TODO' };
 
-function KanbanTaskCard({ task, moveTask, onSelect }: { task: KanbanTask; moveTask: (id: string, status: Status, beforeId?: string) => void; onSelect: (task: KanbanTask) => void }) {
+function KanbanTaskCard({ task, moveTask, onSelect, taskComments }: { task: KanbanTask; moveTask: (id: string, status: Status, beforeId?: string) => void; onSelect: (task: KanbanTask) => void; taskComments: { [key: string]: { author: string; text: string; time: string; avatar: string }[] } }) {
   const ref = useRef<HTMLDivElement | null>(null);
 
   const [, dropRef] = useDrop(() => ({
@@ -279,19 +279,43 @@ function KanbanTaskCard({ task, moveTask, onSelect }: { task: KanbanTask; moveTa
         {task.title}
       </p>
       <div className="flex items-center justify-between gap-2 mb-3 text-xs text-slate-500 dark:text-slate-400">
-        {task.dueDate ? <span>Due {format(task.dueDate, 'MMM d')}</span> : <span>No due date</span>}
+        <div className="flex items-center gap-2">
+          {task.startDate && task.dueDate ? (
+            <span className="font-medium">{format(task.startDate, 'MMM d')} - {format(task.dueDate, 'MMM d, p')}</span>
+          ) : task.dueDate ? (
+            <span className="font-medium">{format(task.dueDate, 'MMM d, p')}</span>
+          ) : null}
+        </div>
         <span>{task.progress}%</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mb-3">
         <div className="flex-1 h-1 bg-slate-200 dark:bg-[#252d3d] rounded-full overflow-hidden">
           <div className={`h-full rounded-full ${pc.bg.replace('/15', '')}`} style={{ width: `${task.progress}%` }} />
         </div>
+      </div>
+      {/* Checklist & Comment indicators */}
+      <div className="flex items-center gap-2 text-xs">
+        {task.checklists && task.checklists.length > 0 && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 dark:bg-[#252d3d] text-slate-700 dark:text-gray-300">
+            <Check className="w-3 h-3" />
+            <span className="font-medium">
+              {task.checklists.reduce((sum, c) => sum + c.items.filter(it => it.checked).length, 0)}/
+              {task.checklists.reduce((sum, c) => sum + c.items.length, 0)}
+            </span>
+          </div>
+        )}
+        {taskComments[task.id] && taskComments[task.id].length > 0 && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 dark:bg-[#252d3d] text-slate-700 dark:text-gray-300">
+            <MessageCircle className="w-3 h-3" />
+            <span className="font-medium">{taskComments[task.id].length}</span>
+          </div>
+        )}
       </div>
     </motion.div>
   );
 }
 
-function KanbanColumn({ status, tasks, moveTask, onAdd, onSelect }: { status: Status; tasks: KanbanTask[]; moveTask: (id: string, status: Status, beforeId?: string) => void; onAdd: (status: Status) => void; onSelect: (task: KanbanTask) => void }) {
+function KanbanColumn({ status, tasks, moveTask, onAdd, onSelect, taskComments }: { status: Status; tasks: KanbanTask[]; moveTask: (id: string, status: Status, beforeId?: string) => void; onAdd: (status: Status) => void; onSelect: (task: KanbanTask) => void; taskComments: { [key: string]: { author: string; text: string; time: string; avatar: string }[] } }) {
   const [{ isOver }, dropRef] = useDrop(() => ({
     accept: 'TASK',
     drop: (item: DragItem) => moveTask(item.id, status),
@@ -317,22 +341,12 @@ function KanbanColumn({ status, tasks, moveTask, onAdd, onSelect }: { status: St
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar">
         <AnimatePresence>
           {tasks.map((task) => (
-            <KanbanTaskCard key={task.id} task={task} moveTask={moveTask} onSelect={onSelect} />
+            <KanbanTaskCard key={task.id} task={task} moveTask={moveTask} onSelect={onSelect} taskComments={taskComments} />
           ))}
         </AnimatePresence>
-        {tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 text-slate-500 dark:text-gray-400">
-            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-[#252d3d] flex items-center justify-center mb-2">
-              <Plus className="w-4 h-4" />
-            </div>
-            <p className="text-xs">Chưa có task</p>
-          </div>
-        )}
-      </div>
-      <div className="px-3 pb-3 pt-2 border-t border-slate-200 dark:border-[#252d3d] bg-slate-100 dark:bg-[#141a28]">
         <button
           onClick={() => onAdd(status)}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0d1117] text-slate-700 dark:text-gray-300 py-2 text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#1f2738] transition"
+          className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0d1117] text-slate-700 dark:text-gray-300 py-2 px-3 text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#1f2738] transition"
         >
           <Plus className="w-4 h-4" />
           Add a card
@@ -382,6 +396,15 @@ export function KanbanBoard() {
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [recurringValue, setRecurringValue] = useState<string>('Never');
   const [reminderValue, setReminderValue] = useState<string>('1 Day before');
+  const [newComment, setNewComment] = useState('');
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveToList, setMoveToList] = useState<Status>('TODO');
+  const [moveToPosition, setMoveToPosition] = useState(1);
+  const [taskComments, setTaskComments] = useState<{ [key: string]: { author: string; text: string; time: string; avatar: string }[] }>({
+    'task-2': [
+      { author: 'Kiệt Tuấn', text: 'added this card to To Do', time: 'a few seconds ago', avatar: 'KT' }
+    ]
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -564,13 +587,23 @@ export function KanbanBoard() {
   };
 
   const saveDatesToTask = (taskId: string) => {
+    // Validate dates: due date must be greater than start date
+    let finalStartDate = startEnabled ? startDateValue : null;
+    let finalDueDate = dueEnabled ? dueDateValue : null;
+    
+    if (finalStartDate && finalDueDate && finalStartDate >= finalDueDate) {
+      // Auto-adjust: set due date to start date + 1 day
+      finalDueDate = addDays(finalStartDate, 1);
+      setDueDateValue(finalDueDate);
+    }
+    
     setTasks((prev) =>
       prev.map((t) =>
         t.id === taskId
           ? {
               ...t,
-              startDate: startEnabled ? startDateValue : null,
-              dueDate: dueEnabled ? dueDateValue : null,
+              startDate: finalStartDate,
+              dueDate: finalDueDate,
               recurring: recurringValue,
               reminder: reminderValue,
             }
@@ -626,6 +659,7 @@ export function KanbanBoard() {
                 moveTask={moveTask}
                 onAdd={openAddModal}
                 onSelect={(task) => setSelectedTask(task)}
+                taskComments={taskComments}
               />
             ))}
           </div>
@@ -641,7 +675,17 @@ export function KanbanBoard() {
               >
                 <motion.div initial={{ scale: 0.98, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.98, y: 8 }} className="w-full max-w-[90rem] bg-white dark:bg-[#0f1720] rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-[#252d3d]">
                   <div className="flex">
-                    <div className="flex-1 p-38">
+                    <div className="flex-1 p-8 overflow-y-auto max-h-[calc(100vh-8rem)]">
+                      <div className="flex items-center justify-between mb-4">
+                        <select value={selectedTask.status} onChange={(e) => moveTask(selectedTask.id, e.target.value as Status)} className="px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-[#111827] text-sm font-medium text-slate-700 dark:text-gray-300 cursor-pointer">
+                          <option value="TODO">To Do</option>
+                          <option value="DOING">Doing</option>
+                          <option value="DONE">Done</option>
+                        </select>
+                        <button onClick={() => { setMoveToList(selectedTask.status); setMoveToPosition((tasks.filter(t => t.status === selectedTask.status).findIndex(t => t.id === selectedTask.id) || 0) + 1); setShowMoveModal(true); }} className="px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-[#111827] text-sm font-medium text-slate-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-[#1f2738] transition">
+                          Move
+                        </button>
+                      </div>
                       <div className="flex items-start justify-between">
                         <div>
                           <h2 className="text-3xl font-semibold text-slate-950 dark:text-white">{selectedTask.title}</h2>
@@ -684,14 +728,23 @@ export function KanbanBoard() {
                           </button>
                         </div>
                         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                          <button
-                            type="button"
-                            onClick={() => openDatesPopup()}
-                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-900 transition hover:bg-slate-200 active:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800"
-                          >
-                            <CalendarDays className="w-4 h-4" />
-                            <span>{(selectedTask.dueDate || selectedTask.startDate) ? format(selectedTask.dueDate || selectedTask.startDate!, 'MMM d, p') : 'No due date'}</span>
-                          </button>
+                          {(selectedTask.dueDate || selectedTask.startDate) && (
+                            <button
+                              type="button"
+                              onClick={() => openDatesPopup()}
+                              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-900 transition hover:bg-slate-200 active:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800"
+                            >
+                              <CalendarDays className="w-4 h-4" />
+                              <span>
+                                {selectedTask.startDate && selectedTask.dueDate 
+                                  ? `${format(selectedTask.startDate, 'MMM d')} - ${format(selectedTask.dueDate, 'MMM d, p')}`
+                                  : selectedTask.dueDate
+                                  ? format(selectedTask.dueDate, 'MMM d, p')
+                                  : format(selectedTask.startDate!, 'MMM d')
+                                }
+                              </span>
+                            </button>
+                          )}
                           {(selectedTask.dueDate || selectedTask.startDate) && isDueSoon && (
                             <div className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-2 py-1 text-[11px] font-semibold text-slate-950">
                               Due soon
@@ -743,9 +796,19 @@ export function KanbanBoard() {
                                         if (calendarSelection === 'start') {
                                           setStartEnabled(true);
                                           setStartDateValue(date);
+                                          // Auto-adjust due date if it's before start date
+                                          if (dueDateValue && date > dueDateValue) {
+                                            setDueEnabled(true);
+                                            setDueDateValue(addDays(date, 1));
+                                          }
                                         } else {
                                           setDueEnabled(true);
-                                          setDueDateValue(date);
+                                          // Auto-adjust if due date is before or equal start date
+                                          if (startDateValue && date <= startDateValue) {
+                                            setDueDateValue(addDays(startDateValue, 1));
+                                          } else {
+                                            setDueDateValue(date);
+                                          }
                                         }
                                       }}
                                       onChangeMonth={(date) => setCalendarMonth(startOfMonth(date))}
@@ -780,9 +843,9 @@ export function KanbanBoard() {
                                             setStartEnabled(true);
                                             setCalendarSelection('start');
                                           }}
-                                          className={`w-full rounded-2xl border px-3 py-2 text-left text-sm ${calendarSelection === 'start' ? 'border-blue-500 bg-slate-100 text-slate-950' : 'border-slate-300 bg-slate-100 text-slate-950 hover:border-slate-400 hover:bg-slate-200 active:bg-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800'}`}
+                                          className={`w-full rounded-2xl border px-3 py-2 text-left text-sm ${calendarSelection === 'start' ? 'border-blue-500 bg-slate-100 text-slate-950 dark:bg-slate-100 dark:text-slate-950' : 'border-slate-300 bg-slate-100 text-slate-950 hover:border-slate-400 hover:bg-slate-200 active:bg-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800'}`}
                                         >
-                                          {startDateValue ? format(startDateValue, 'M/d/yyyy') : <span className="text-slate-400">M/D/YYYY</span>}
+                                          {startDateValue ? format(startDateValue, 'M/d/yyyy') : 'Select date'}
                                         </button>
                                       </div>
                                     </div>
@@ -810,9 +873,9 @@ export function KanbanBoard() {
                                         <button
                                           type="button"
                                           onClick={() => setCalendarSelection('due')}
-                                          className={`flex-1 rounded-2xl border px-3 py-2 text-left text-sm ${calendarSelection === 'due' ? 'border-blue-500 bg-slate-100 text-slate-950' : 'border-slate-300 bg-slate-100 text-slate-950 hover:border-slate-400 hover:bg-slate-200 hover:text-slate-950 active:bg-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800'}`}
+                                          className={`flex-1 rounded-2xl border px-3 py-2 text-left text-sm ${calendarSelection === 'due' ? 'border-blue-500 bg-slate-100 text-slate-950 dark:bg-slate-100 dark:text-slate-950' : 'border-slate-300 bg-slate-100 text-slate-950 hover:border-slate-400 hover:bg-slate-200 hover:text-slate-950 active:bg-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-slate-800'}`}
                                         >
-                                          {dueDateValue ? format(dueDateValue, 'M/d/yyyy') : <span className="text-slate-400">No due date set</span>}
+                                          {dueDateValue ? format(dueDateValue, 'M/d/yyyy') : 'Select date'}
                                         </button>
                                         <select
                                           value={dueDateValue ? format(dueDateValue, 'p') : '12:00 AM'}
@@ -834,6 +897,9 @@ export function KanbanBoard() {
                                           ))}
                                         </select>
                                       </div>
+                                      {startDateValue && dueDateValue && startDateValue >= dueDateValue && (
+                                        <p className="text-xs text-amber-400 mt-2">⚠️ Due date must be after start date</p>
+                                      )}
                                     </div>
 
                                     <div className="space-y-3 border-b border-slate-800 pb-4">
@@ -889,9 +955,9 @@ export function KanbanBoard() {
                           </motion.div>
                         )}
 
-                        <div className="mt-6">
+                        <div className="mt-0 py-6">
                           <div className="flex items-center justify-between mb-2">
-                            <div className="text-sm font-semibold text-slate-900 dark:text-white">Description</div>
+                            <div className="text-base font-semibold text-slate-900 dark:text-white">Description</div>
                             <button onClick={saveSelectedTask} className="text-xs rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                               Save description
                             </button>
@@ -900,12 +966,12 @@ export function KanbanBoard() {
                             value={selectedTask.description || ''}
                             onChange={(e) => updateSelectedTaskField('description', e.target.value)}
                             placeholder="Add a more detailed description..."
-                            className="w-full min-h-[120px] bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#252d3d] rounded-lg p-3 text-sm text-slate-700 dark:text-gray-300"
+                            className="w-full min-h-[120px] bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#252d3d] rounded-lg p-3 text-base text-slate-700 dark:text-gray-300"
                           />
                         </div>
 
                         {/* Checklist list */}
-                        <div className="mt-6">
+                        <div className="mt-4 py-6">
                           {(selectedTask.checklists || []).map((c) => {
                             const total = c.items.length;
                             const checked = c.items.filter((it) => it.checked).length;
@@ -952,22 +1018,44 @@ export function KanbanBoard() {
                         </div>
                       </div>
                     </div>
-                    <div className="w-[30rem] border-l border-slate-200 dark:border-[#252d3d] bg-slate-50 dark:bg-[#0b1116] p-5">
+                    <div className="w-[30rem] border-l border-slate-200 dark:border-[#252d3d] bg-slate-50 dark:bg-[#0b1116] p-6 flex flex-col">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm font-semibold text-slate-900 dark:text-white">Comments and activity</div>
                         <button className="text-xs px-2 py-1 rounded-md border">Show details</button>
                       </div>
                       <div className="mb-3">
-                        <input placeholder="Write a comment..." className="w-full bg-transparent border border-slate-200 dark:border-[#252d3d] rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-gray-300" />
-                      </div>
-                      <div className="text-sm text-slate-600 dark:text-gray-400">
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className="w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center text-white">KT</div>
-                          <div>
-                            <div className="font-medium">Kiệt Tuấn added this card to To Do</div>
-                            <a className="text-xs text-blue-500">a few seconds ago</a>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          if (newComment.trim() && selectedTask) {
+                            setTaskComments((prev) => ({
+                              ...prev,
+                              [selectedTask.id]: [...(prev[selectedTask.id] || []), { author: 'You', text: newComment, time: 'just now', avatar: 'Y' }]
+                            }));
+                            setNewComment('');
+                          }
+                        }}>
+                          <div className="flex gap-2">
+                            <input 
+                              placeholder="Write a comment..." 
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              className="flex-1 bg-transparent border border-slate-200 dark:border-[#252d3d] rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-gray-300" 
+                            />
+                            <button type="submit" className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">Send</button>
                           </div>
-                        </div>
+                        </form>
+                      </div>
+                      <div className="flex-1 overflow-y-auto text-sm text-slate-600 dark:text-gray-400 space-y-3">
+                        {selectedTask && (taskComments[selectedTask.id] || []).map((comment, index) => (
+                          <div key={index} className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{comment.avatar}</div>
+                            <div className="flex-1">
+                              <div className="font-medium text-slate-900 dark:text-white">{comment.author}</div>
+                              <div className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">{comment.text}</div>
+                              <a className="text-xs text-blue-500 mt-1 block">{comment.time}</a>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -975,7 +1063,86 @@ export function KanbanBoard() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+
+        {/* Move Card Modal */}
+        <AnimatePresence>
+          {showMoveModal && selectedTask && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-60 flex items-center justify-center p-4"
+              onClick={() => setShowMoveModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white dark:bg-[#161b27] border border-slate-200 dark:border-[#252d3d] rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Move card</h3>
+                  <button onClick={() => setShowMoveModal(false)} className="text-slate-500 dark:text-gray-400 hover:text-white transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Board</label>
+                    <div className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-[#0d1117] text-slate-700 dark:text-gray-300 text-sm">
+                      Agile
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">List</label>
+                    <select 
+                      value={moveToList} 
+                      onChange={(e) => {
+                        const newList = e.target.value as Status;
+                        setMoveToList(newList);
+                        setMoveToPosition(1);
+                      }}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0d1117] text-slate-700 dark:text-gray-300 text-sm"
+                    >
+                      <option value="TODO">To Do</option>
+                      <option value="DOING">Doing</option>
+                      <option value="DONE">Done</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Position</label>
+                    <select 
+                      value={moveToPosition} 
+                      onChange={(e) => setMoveToPosition(parseInt(e.target.value))}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0d1117] text-slate-700 dark:text-gray-300 text-sm"
+                    >
+                      {Array.from({ length: Math.max(1, tasks.filter(t => t.status === moveToList).length + 1) }).map((_, i) => (
+                        <option key={i + 1} value={i + 1}>{i + 1}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (selectedTask && moveToList !== selectedTask.status) {
+                        moveTask(selectedTask.id, moveToList);
+                      }
+                      setShowMoveModal(false);
+                      setSelectedTask({ ...selectedTask, status: moveToList });
+                    }}
+                    className="w-full py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors mt-5"
+                  >
+                    Move
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {showAddModal && (
@@ -1043,6 +1210,7 @@ export function KanbanBoard() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
       </div>
     </DndProvider>
   );
