@@ -1,119 +1,148 @@
-import type { ComponentType } from 'react';
-import { motion } from 'motion/react';
-import {
-  LayoutDashboard, CheckSquare, KanbanSquare, Calendar,
-  Timer, Bot, Users, ChevronLeft, ChevronRight, BookOpen
-} from 'lucide-react';
-import type { Page } from '@/types';
+'use client';
 
-interface SidebarProps {
-  currentPage: Page;
-  setCurrentPage: (page: Page) => void;
-  collapsed: boolean;
-  setCollapsed: (v: boolean) => void;
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Kanban,
+  CalendarDays,
+  Bot,
+  Users,
+  BookOpen,
+  Settings,
+  Bell,
+} from "lucide-react";
+
+interface NavItem {
+  icon: React.ReactNode;
+  label: string;
+  path: string;
+  badge?: number;
+  color?: string;
 }
 
-const menuItems: { id: Page; icon: ComponentType<{ className?: string }>; label: string; color?: string }[] = [
-  { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { id: 'tasks', icon: CheckSquare, label: 'Công việc' },
-  { id: 'kanban', icon: KanbanSquare, label: 'Kanban Board' },
-  { id: 'schedule', icon: Calendar, label: 'Lịch học', color: 'text-red-400' },
-  { id: 'pomodoro', icon: Timer, label: 'Pomodoro', color: 'text-purple-400' },
-  { id: 'ai', icon: Bot, label: 'AI Assistant', color: 'text-blue-400' },
-  { id: 'groups', icon: Users, label: 'Nhóm học tập', color: 'text-pink-400' },
+const navItems: NavItem[] = [
+  { icon: <LayoutDashboard size={17} />, label: "Dashboard", path: "/dashboard", color: "#6366F1" },
+  { icon: <Kanban size={17} />, label: "Công việc", path: "/dashboard/tasks", color: "#8B5CF6" },
+  { icon: <Kanban size={17} />, label: "Kanban Board", path: "/dashboard/kanban", color: "#0EA5E9" },
+  { icon: <CalendarDays size={17} />, label: "Lịch học", path: "/dashboard/schedule", color: "#10B981" },
+  { icon: <Bot size={17} />, label: "AI Assistant", path: "/dashboard/ai-assistant", color: "#8B5CF6" },
+  { icon: <Users size={17} />, label: "Nhóm học tập", path: "/dashboard/study-groups", color: "#EC4899" },
 ];
 
-export function Sidebar({ currentPage, setCurrentPage, collapsed, setCollapsed }: SidebarProps) {
+export function Sidebar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleNavClick = (path: string) => {
+    navigate(path);
+  };
   return (
-    <motion.aside
-      className="bg-white border-r border-slate-200 dark:bg-[#161b27] dark:border-[#252d3d] flex flex-col flex-shrink-0 relative z-10"
-      animate={{ width: collapsed ? 70 : 200 }}
-      transition={{ duration: 0.25, ease: 'easeInOut' }}
-      style={{ minWidth: collapsed ? 70 : 200 }}
-    >
+    <aside className="w-60 shrink-0 flex flex-col h-screen sticky top-0 bg-white dark:bg-[#161b27] transition-colors duration-300" style={{ borderRight: "1px solid #E8EAF0", boxShadow: "2px 0 12px rgba(0,0,0,0.04)" }}>
       {/* Logo */}
-      <div className="px-4 py-4 flex items-center gap-3 border-b border-slate-200 dark:border-[#252d3d]">
-        <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
-          <BookOpen className="w-4 h-4 text-white" />
+      <div className="px-5 py-5 border-b border-slate-200 dark:border-[#252d3d]">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)", boxShadow: "0 4px 12px rgba(99,102,241,0.4)" }}>
+            <BookOpen size={16} className="text-white" />
+          </div>
+          <div>
+            <span className="text-slate-900 dark:text-white transition-colors" style={{ fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>StudyAI</span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-emerald-500 dark:text-emerald-400 transition-colors" style={{ fontSize: "10px", fontWeight: 500 }}>Đang hoạt động</span>
+            </div>
+          </div>
         </div>
-        {!collapsed && (
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden"
-          >
-            <div className="text-sm font-bold text-slate-950 dark:text-white leading-tight whitespace-nowrap">StudyAI</div>
-            <div className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight whitespace-nowrap">Hệ thống học tập thông minh</div>
-          </motion.div>
-        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-3 overflow-hidden">
-        {!collapsed && (
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest px-2 mb-2 font-medium">Menu chính</div>
-        )}
-        <div className="space-y-0.5">
-          {menuItems.map((item) => {
-            const active = currentPage === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentPage(item.id)}
-                title={collapsed ? item.label : undefined}
-                className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl transition-all duration-150 text-left group relative ${
-                  active
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-gray-400 dark:hover:bg-[#1e2534] dark:hover:text-gray-200'
-                }`}
+      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+        <p className="px-3 py-1 mb-1 dark:text-slate-400 transition-colors" style={{ fontSize: "10px", fontWeight: 600, color: "#94A3B8", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+          Menu chính
+        </p>
+
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path || 
+                          (item.path === '/dashboard' && location.pathname === '/dashboard');
+          
+          return (
+            <button
+              key={item.label}
+              onClick={() => handleNavClick(item.path)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left relative group ${
+                isActive 
+                  ? "text-indigo-700 dark:text-indigo-400" 
+                  : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:bg-slate-50 dark:hover:bg-[#1e2534]"
+              }`}
+              style={isActive ? {
+                background: "linear-gradient(135deg, #EEF2FF, #F5F3FF)",
+                boxShadow: "inset 0 0 0 1px rgba(99,102,241,0.15)"
+              } : {}}
+            >
+              {isActive && (
+                <div className="absolute left-0 top-1/2 w-1 h-5 rounded-r-full bg-indigo-600 dark:bg-indigo-500" style={{ transform: "translateY(-50%)" }} />
+              )}
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                style={isActive
+                  ? { background: item.color, color: "#fff", boxShadow: `0 4px 10px ${item.color}50` }
+                  : { background: "#F8FAFC", color: "#94A3B8" }}
               >
-                <item.icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-white' : (item.color || 'text-slate-500 group-hover:text-slate-700 dark:text-gray-400 dark:group-hover:text-gray-300')}`} />
-                {!collapsed && (
-                  <span className="text-xs font-medium truncate whitespace-nowrap">{item.label}</span>
-                )}
-                {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-950 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl border border-slate-700 z-50 dark:bg-[#1e2534] dark:border-[#2a3444]">
-                    {item.label}
-                  </div>
-                )}
-              </button>
-            );
-          })}
+                {item.icon}
+              </div>
+              <span style={{ fontSize: "13.5px", fontWeight: isActive ? 600 : 400 }}>
+                {item.label}
+              </span>
+              {item.badge && (
+                <span
+                  className="ml-auto text-white rounded-full px-2 py-0.5 shrink-0"
+                  style={{ fontSize: "10px", fontWeight: 700, background: item.color ?? "#6366F1" }}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+
+        <div className="pt-3 mt-3 border-t border-slate-200 dark:border-[#252d3d]">
+          <p className="px-3 py-1 mb-1 dark:text-slate-400 transition-colors" style={{ fontSize: "10px", fontWeight: 600, color: "#94A3B8", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            Hệ thống
+          </p>
+          {[
+            { icon: <Bell size={17} />, label: "Thông báo" },
+            { icon: <Settings size={17} />, label: "Cài đặt" },
+          ].map((item) => (
+            <button
+              key={item.label}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-[#1e2534] hover:text-slate-800 dark:hover:text-gray-200 transition-all text-left"
+            >
+              <div className="w-7 h-7 rounded-lg bg-slate-50 dark:bg-[#0d1117] flex items-center justify-center shrink-0 text-slate-400 dark:text-gray-600">
+                {item.icon}
+              </div>
+              <span style={{ fontSize: "13.5px" }}>{item.label}</span>
+            </button>
+          ))}
         </div>
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="px-2 pb-2 border-t border-[#252d3d] pt-2">
+      {/* User profile */}
+      <div className="p-3 border-t border-slate-200 dark:border-[#252d3d]">
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center gap-2.5 text-slate-700 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 text-xs px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#1e2534] transition-all"
+          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#1e2534] transition-all text-left"
         >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4 flex-shrink-0" />
-          ) : (
-            <>
-              <ChevronLeft className="w-4 h-4 flex-shrink-0" />
-              <span className="whitespace-nowrap">Thu gọn sidebar</span>
-            </>
-          )}
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)", boxShadow: "0 4px 10px rgba(99,102,241,0.3)" }}
+          >
+            <span className="text-white" style={{ fontSize: "13px", fontWeight: 700 }}>N</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-slate-800 dark:text-white transition-colors" style={{ fontSize: "13px", fontWeight: 600 }}>Nguyễn Văn An</p>
+          </div>
+          <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
         </button>
       </div>
-
-      {/* User profile */}
-      <div className="px-2 pb-3 border-t border-[#252d3d] pt-3">
-        <div className="flex items-center gap-2.5 px-1">
-          <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white shadow-md">
-            VA
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-slate-950 dark:text-white truncate">Nguyễn Văn An</div>
-              <div className="text-[10px] text-orange-500 dark:text-orange-400 whitespace-nowrap">🔥 7 ngày streak</div>
-            </div>
-          )}
-        </div>
-      </div>
-    </motion.aside>
+    </aside>
   );
 }

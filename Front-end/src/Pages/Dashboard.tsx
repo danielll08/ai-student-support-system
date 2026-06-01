@@ -1,334 +1,335 @@
 import { motion } from 'motion/react';
-import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer,
-  LineChart, Line, CartesianGrid, Tooltip, Area, AreaChart
-} from 'recharts';
-import { CheckCircle2, AlertCircle, Timer, Zap, TrendingUp, Plus, ChevronRight, BookOpen, Bot, CheckSquare } from 'lucide-react';
-import { mockTasks, mockDailyStats, mockSubjectWorkload } from '@/data/mockData';
-// Định nghĩa trực tiếp kiểu Page để không cần import từ file khác nữa
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { CheckSquare, Timer, Clock, TrendingUp, Flame, ArrowUp, ArrowDown, Circle, CheckCircle2, Calendar, Plus, BookMarked, GitPullRequest, Sparkles, ChevronRight, Zap } from 'lucide-react';
+
 export type Page = 'dashboard' | 'tasks' | 'kanban' | 'schedule' | 'pomodoro' | 'ai' | 'groups';
-const weekData = mockDailyStats.slice(-7).map((item) => ({
-  day: item.date.slice(5),
-  hours: item.hoursStudied,
-}));
 
-const workloadData = mockSubjectWorkload.map((item) => ({
-  subject: item.subject,
-  tasks: item.taskCount,
-}));
+const stats = [
+  { label: "Hoàn thành", value: "12", unit: "nhiệm vụ", icon: <CheckSquare size={20} />, bg: "#F0F4FF", color: "#4F46E5", change: "+3 tuần này", up: true },
+  { label: "Đang làm", value: "3", unit: "nhiệm vụ", icon: <Zap size={20} />, bg: "#FFF7ED", color: "#F97316", change: "2 sắp đến hạn", up: false },
+  { label: "Giờ học", value: "30.7", unit: "giờ", icon: <Clock size={20} />, bg: "#E0F2FE", color: "#0284C7", change: "+5.2h tuần này", up: true },
+  { label: "Hiệu suất", value: "72", unit: "%", icon: <TrendingUp size={20} />, bg: "#F0FDF4", color: "#15803D", change: "+8% tháng này", up: true },
+];
 
-const todayTasks = mockTasks.filter((task) => task.status !== 'done').slice(0, 3);
+const weekData = [
+  { day: "T2", hours: 2.5, tasks: 3 },
+  { day: "T3", hours: 4.2, tasks: 5 },
+  { day: "T4", hours: 3.8, tasks: 4 },
+  { day: "T5", hours: 5.5, tasks: 7 },
+  { day: "T6", hours: 4.8, tasks: 6 },
+  { day: "T7", hours: 6.2, tasks: 8 },
+  { day: "CN", hours: 3.0, tasks: 4 },
+];
 
-const priorityColors: Record<string, string> = {
-  HIGH: 'text-red-400 bg-red-500/10',
-  MEDIUM: 'text-yellow-400 bg-yellow-500/10',
-  LOW: 'text-green-400 bg-green-500/10',
+const pieData = [
+  { name: "Hoàn thành", value: 12, color: "#4F46E5" },
+  { name: "Đang làm", value: 3, color: "#E5E7EB" },
+  { name: "Chờ duyệt", value: 5, color: "#BFDBFE" },
+];
+
+const taskList = [
+  { id: 1, title: "Nộp bài tập CSS", subject: "Giao diện", subjectColor: "#4F46E5", dueTime: "Hôm nay 23:59", priority: "high", done: false },
+  { id: 2, title: "Review slide KTM", subject: "Kinh tế", subjectColor: "#F97316", dueTime: "Hôm nay 22:00", priority: "medium", done: false },
+  { id: 3, title: "Commit project React", subject: "Lập trình", subjectColor: "#0284C7", dueTime: "Ngày mai 08:00", priority: "low", done: true },
+];
+
+const priorityConfig = {
+  high: { color: "#DC2626", bg: "#FEE2E2", label: "Cao" },
+  medium: { color: "#D97706", bg: "#FEF3C7", label: "Trung bình" },
+  low: { color: "#059669", bg: "#DBEAFE", label: "Thấp" },
 };
 
-interface DashboardProps {
-  setCurrentPage: (page: Page) => void;
-}
-
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white text-slate-950 border border-slate-200 rounded-lg px-3 py-2 shadow-xl dark:bg-[#1e2534] dark:border-[#2a3444] dark:text-white">
-        <p className="text-xs text-slate-500 dark:text-gray-400 mb-1">{label}</p>
-        <p className="text-sm text-slate-950 dark:text-white font-semibold">{payload[0].value} giờ</p>
+      <div className="bg-white rounded-lg p-3 border border-gray-200" style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}>
+        <p className="text-xs text-gray-600 font-medium mb-1">{payload[0].payload.day}</p>
+        {payload.map((entry: any) => (
+          <div key={entry.dataKey} className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
+            <p className="text-sm font-semibold text-gray-900">
+              {entry.value}{entry.dataKey === "hours" ? "h" : " task"}
+            </p>
+          </div>
+        ))}
       </div>
     );
   }
-
-  return null;
-};
-
-const WorkloadTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white text-slate-950 border border-slate-200 rounded-lg px-3 py-2 shadow-xl dark:bg-[#1e2534] dark:border-[#2a3444] dark:text-white">
-        <p className="text-xs text-slate-500 dark:text-gray-400 mb-1">{label}</p>
-        <p className="text-sm text-slate-950 dark:text-white font-semibold">{payload[0].value} tasks</p>
-      </div>
-    );
-  }
-
   return null;
 };
 
 export function Dashboard() {
-  const totalTasks = mockTasks.length;
-  const doneTasks = mockTasks.filter((task) => task.status === 'done').length;
-  const overdueTasks = mockTasks.filter((task) => task.status !== 'done' && new Date(task.deadline) < new Date()).length;
-  const studyHours = mockDailyStats.length
-    ? Number((mockDailyStats.reduce((sum, item) => sum + item.hoursStudied, 0) / mockDailyStats.length).toFixed(1))
-    : 0;
-  const progressPercent = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
-  const circumference = 2 * Math.PI * 68;
+  const currentHour = new Date().getHours();
+  const greeting = currentHour < 12 ? "Chào buổi sáng" : currentHour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
+  const greetingEmoji = currentHour < 12 ? "🌅" : currentHour < 18 ? "☀️" : "🌙";
+  const totalHours = weekData.reduce((sum, d) => sum + d.hours, 0).toFixed(1);
+  const total = pieData.reduce((s, d) => s + d.value, 0);
+  const completion = Math.round((pieData[0].value / total) * 100);
 
   return (
-    <div className="p-5 space-y-5">
-      {/* Greeting */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <p className="text-xs text-gray-500 mb-1">Chào buổi sáng, Nguyễn 👋</p>
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-          Kiểm tra lịch trình và công việc của bạn
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">Thứ Sáu, 29 tháng 5 năm 2026 · Chúc bạn học tập hiệu quả!</p>
-      </motion.div>
-
-      {/* Stats row */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          {
-            icon: CheckCircle2, iconClass: 'text-green-400', bgClass: 'bg-green-500/10 group-hover:bg-green-500/20',
-            value: doneTasks, label: 'Hoàn thành', sub: `/${totalTasks} tasks`, borderHover: 'hover:border-green-500/30', delay: 0.1,
-          },
-          {
-            icon: AlertCircle, iconClass: 'text-red-400', bgClass: 'bg-red-500/10 group-hover:bg-red-500/20',
-            value: overdueTasks, label: 'Đang làm', sub: 'tasks còn lại', borderHover: 'hover:border-red-500/30', delay: 0.15,
-          },
-          {
-            icon: Timer, iconClass: 'text-purple-400', bgClass: 'bg-purple-500/10 group-hover:bg-purple-500/20',
-            value: `${studyHours}h`, label: 'Giờ học', sub: 'tuần này', borderHover: 'hover:border-purple-500/30', delay: 0.2,
-          },
-          {
-            icon: TrendingUp, iconClass: 'text-blue-400', bgClass: 'bg-blue-500/10 group-hover:bg-blue-500/20',
-            value: `${progressPercent}%`, label: 'Hiệu suất', sub: '↑ 5% so tuần trước', borderHover: 'hover:border-blue-500/30', delay: 0.25,
-          },
-        ].map((stat, i) => (
+    <div className="flex-1 overflow-y-auto" style={{ background: "#F0F2F8" }}>
+      <div className="flex gap-5 p-5 min-h-full">
+        <div className="flex-1 min-w-0 flex flex-col gap-5">
           <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: stat.delay }}
-            className={`bg-white border border-slate-200 dark:bg-[#161b27] dark:border-[#252d3d] ${stat.borderHover} rounded-2xl p-4 group transition-all duration-200 cursor-default`}
+            className="relative rounded-2xl overflow-hidden p-7"
+            style={{
+              background: "linear-gradient(135deg, #1E1B4B 0%, #312E81 40%, #4C1D95 75%, #5B21B6 100%)",
+              boxShadow: "0 20px 60px rgba(79, 70, 229, 0.35)",
+            }}
           >
-            <div className={`w-9 h-9 ${stat.bgClass} rounded-xl flex items-center justify-center mb-3 transition-colors`}>
-              <stat.icon className={`w-4 h-4 ${stat.iconClass}`} />
-            </div>
-            <div className="text-2xl font-bold text-slate-950 dark:text-white mb-0.5">{stat.value}</div>
-            <div className="text-xs text-slate-500 dark:text-gray-400">{stat.label}</div>
-            <div className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">{stat.sub}</div>
-          </motion.div>
-        ))}
-      </div>
+            <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #A78BFA, transparent)", transform: "translate(30%, -30%)" }} />
+            <div className="absolute bottom-0 left-1/3 w-48 h-48 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #818CF8, transparent)", transform: "translate(0, 40%)" }} />
+            <div className="absolute top-1/2 right-1/4 w-32 h-32 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #C4B5FD, transparent)", transform: "translate(0, -50%)" }} />
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
 
-      {/* Main content */}
-      <div className="grid grid-cols-3 gap-5">
-        {/* Left: charts */}
-        <div className="col-span-2 space-y-5">
-          {/* Weekly progress chart */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white border border-slate-200 dark:bg-[#161b27] dark:border-[#252d3d] rounded-2xl p-5"
-          >
-            <div className="flex items-center justify-between mb-4">
+            <div className="relative flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Tiến độ tuần này</h3>
-                <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Tổng {studyHours} giờ học</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full" style={{ fontSize: "12px", fontWeight: 500 }}>
+                    <span>{greetingEmoji}</span>
+                    <span>{new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "numeric" })}</span>
+                  </span>
+                </div>
+                <h1 className="text-white mb-2" style={{ fontSize: "26px", fontWeight: 700, lineHeight: 1.2 }}>
+                  {greeting}, Nguyễn! 👋
+                </h1>
+                <p className="text-indigo-200" style={{ fontSize: "14px", maxWidth: "400px", lineHeight: 1.6 }}>
+                  Bạn đang có <strong className="text-white">3 nhiệm vụ</strong> cần hoàn thành hôm nay. Hãy tiếp tục giữ phong độ!
+                </p>
+
+                <div className="flex items-center gap-4 mt-5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span className="text-indigo-200" style={{ fontSize: "13px" }}>72% mục tiêu tuần</span>
+                  </div>
+                  <div className="w-px h-4 bg-white/20" />
+                  <div className="flex items-center gap-2">
+                    <Flame size={13} className="text-amber-400" />
+                    <span className="text-indigo-200" style={{ fontSize: "13px" }}>7 ngày liên tục</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden lg:flex flex-col items-center gap-3 shrink-0">
+                <div className="relative w-24 h-24">
+                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="10" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#progressGrad)" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 40 * 0.72} ${2 * Math.PI * 40 * 0.28}`} />
+                    <defs>
+                      <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#A78BFA" />
+                        <stop offset="100%" stopColor="#34D399" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-white" style={{ fontSize: "20px", fontWeight: 700 }}>72%</span>
+                    <span className="text-indigo-300" style={{ fontSize: "10px" }}>hiệu suất</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((stat) => (
+              <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-5 hover:shadow-lg transition-all duration-300 cursor-pointer group" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md" style={{ background: stat.gradient, boxShadow: `0 6px 16px ${stat.color}40` }}>
+                    {stat.icon}
+                  </div>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: stat.up ? "#F0FDF4" : "#FEF3C7", color: stat.up ? "#16A34A" : "#D97706" }}>
+                    {stat.up ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+                    <span style={{ fontSize: "10px", fontWeight: 600 }}>{stat.up ? "Tốt" : "Chú ý"}</span>
+                  </div>
+                </div>
+                <div className="flex items-end gap-1">
+                  <span className="text-slate-900" style={{ fontSize: "30px", fontWeight: 700, lineHeight: 1 }}>{stat.value}</span>
+                  <span className="text-slate-400 mb-0.5" style={{ fontSize: "13px" }}>{stat.unit}</span>
+                </div>
+                <p className="text-slate-500 mt-1.5" style={{ fontSize: "12px", fontWeight: 500 }}>{stat.label}</p>
+                <p className="mt-1" style={{ fontSize: "11px", color: stat.up ? "#16A34A" : "#D97706", fontWeight: 500 }}>{stat.change}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-2xl p-6" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <h3 className="text-slate-900" style={{ fontSize: "15px", fontWeight: 700 }}>Tiến độ tuần này</h3>
+                <p className="text-slate-400 mt-0.5" style={{ fontSize: "13px" }}>Giờ học và nhiệm vụ hoàn thành mỗi ngày</p>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                <span className="text-xs text-gray-500">Giờ học</span>
+                <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 px-3 py-1.5 rounded-xl">
+                  <TrendingUp size={12} />
+                  <span style={{ fontSize: "12px", fontWeight: 600 }}>+12% tuần này</span>
+                </div>
               </div>
             </div>
+
+            <div className="flex items-center gap-6 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)" }} />
+                <span className="text-slate-500" style={{ fontSize: "12px" }}>Giờ học</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ background: "linear-gradient(135deg, #0EA5E9, #6366F1)" }} />
+                <span className="text-slate-500" style={{ fontSize: "12px" }}>Nhiệm vụ</span>
+              </div>
+              <div className="ml-auto flex items-center gap-1.5">
+                <span className="text-slate-400" style={{ fontSize: "12px" }}>Tổng:</span>
+                <span className="text-slate-900" style={{ fontSize: "14px", fontWeight: 700 }}>{totalHours}h</span>
+              </div>
+            </div>
+
             <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={weekData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+              <AreaChart data={weekData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="hoursGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} />
+                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="tasksGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e2534" vertical={false} />
-                <XAxis dataKey="day" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis stroke="#374151" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="hours"
-                  stroke="#8b5cf6"
-                  strokeWidth={2.5}
-                  fill="url(#hoursGrad)"
-                  dot={{ fill: '#8b5cf6', r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#a78bfa', strokeWidth: 0 }}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 12, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#E2E8F0", strokeWidth: 1, strokeDasharray: "4 4" }} />
+                <Area type="monotone" dataKey="hours" stroke="#6366F1" strokeWidth={2.5} fill="url(#hoursGrad)" dot={{ r: 3.5, fill: "#6366F1", stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 5, fill: "#6366F1", stroke: "#fff", strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="tasks" stroke="#0EA5E9" strokeWidth={2.5} fill="url(#tasksGrad)" dot={{ r: 3.5, fill: "#0EA5E9", stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 5, fill: "#0EA5E9", stroke: "#fff", strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>
           </motion.div>
-
-          {/* Workload chart */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-white border border-slate-200 dark:bg-[#161b27] dark:border-[#252d3d] rounded-2xl p-5"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Workload theo môn</h3>
-                <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Tổng {totalTasks} tasks đang hoạt động</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  <span className="text-xs text-gray-500">Tasks</span>
-                </div>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={workloadData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-                <defs>
-                  <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e2534" horizontal={true} vertical={false} />
-                <XAxis dataKey="subject" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis stroke="#374151" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<WorkloadTooltip />} />
-                <Bar dataKey="tasks" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={36} />
-              </BarChart>
-            </ResponsiveContainer>
-          </motion.div>
         </div>
 
-        {/* Right: progress + tasks */}
-        <div className="space-y-5">
-          {/* Progress circle */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white border border-slate-200 dark:bg-[#161b27] dark:border-[#252d3d] rounded-2xl p-5"
-          >
-            <h3 className="text-sm font-semibold text-slate-950 dark:text-white mb-4">Tổng quan</h3>
-            <div className="flex flex-col items-center">
-              <div className="relative w-36 h-36 mb-4">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
-                  <circle cx="80" cy="80" r="68" stroke="#1e2534" strokeWidth="10" fill="none" />
-                  <circle
-                    cx="80" cy="80" r="68"
-                    stroke="url(#circleGrad)"
-                    strokeWidth="10"
-                    fill="none"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={circumference * (1 - progressPercent / 100)}
-                    strokeLinecap="round"
-                  />
-                  <defs>
-                    <linearGradient id="circleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#3b82f6" />
-                      <stop offset="100%" stopColor="#8b5cf6" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">{progressPercent}%</div>
-                    <div className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">Hiệu suất</div>
-                  </div>
+        <aside className="w-72 shrink-0 flex flex-col gap-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="bg-white rounded-2xl p-5" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-slate-900" style={{ fontSize: "14px", fontWeight: 700 }}>Tổng tiến độ</h3>
+              <span className="bg-slate-50 text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg" style={{ fontSize: "11px", fontWeight: 500 }}>Tuần này</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="relative w-24 h-24 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={42} startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
+                      {pieData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-slate-900" style={{ fontSize: "20px", fontWeight: 800 }}>{completion}%</span>
+                  <span className="text-slate-400" style={{ fontSize: "9px" }}>hoàn thành</span>
                 </div>
               </div>
-              <div className="w-full space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Hoàn thành</span>
-                  <span className="text-xs font-medium text-green-400">{doneTasks} tasks</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Đang làm</span>
-                  <span className="text-xs font-medium text-blue-400">3 tasks</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Chưa bắt đầu</span>
-                  <span className="text-xs font-medium text-gray-400">5 tasks</span>
-                </div>
-                <button
-                  onClick={() => {}}
-                  className="w-full mt-2 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl text-xs font-medium transition-all hover:shadow-lg hover:shadow-purple-500/20 flex items-center justify-center gap-1.5"
-                >
-                  Xem chi tiết <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+
+              <div className="flex-1 space-y-2.5">
+                {pieData.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
+                      <span className="text-slate-500" style={{ fontSize: "11px" }}>{item.name}</span>
+                    </div>
+                    <span className="text-slate-800" style={{ fontSize: "12px", fontWeight: 700 }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${completion}%`, background: "linear-gradient(90deg, #6366F1, #8B5CF6, #A78BFA)", boxShadow: "0 2px 6px rgba(99,102,241,0.4)" }} />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className="text-slate-400" style={{ fontSize: "11px" }}>0%</span>
+                <span className="text-indigo-600" style={{ fontSize: "11px", fontWeight: 600 }}>{completion}% mục tiêu</span>
+                <span className="text-slate-400" style={{ fontSize: "11px" }}>100%</span>
               </div>
             </div>
           </motion.div>
 
-          {/* Today tasks */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
-            className="bg-white border border-slate-200 dark:bg-[#161b27] dark:border-[#252d3d] rounded-2xl p-5"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Cần làm hôm nay</h3>
-              <button
-                onClick={() => {}}
-                className="text-[10px] text-purple-400 hover:text-purple-300 transition-colors"
-              >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(135deg, #F5F3FF, #EFF6FF)", border: "1px solid #DDD6FE" }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #8B5CF6, #6366F1)" }}>
+              <Sparkles size={14} className="text-white" />
+            </div>
+            <div>
+              <p className="text-indigo-900" style={{ fontSize: "12px", fontWeight: 600 }}>Gợi ý từ AI</p>
+              <p className="text-indigo-700 mt-0.5" style={{ fontSize: "11px", lineHeight: 1.5 }}>
+                Bạn học hiệu quả nhất vào <strong>19:00–21:00</strong>. Hãy sắp xếp bài khó vào khung giờ này.
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white rounded-2xl p-5 flex-1" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-slate-900" style={{ fontSize: "14px", fontWeight: 700 }}>Cần làm hôm nay</h3>
+              <button className="text-indigo-500 hover:text-indigo-700 transition-colors" style={{ fontSize: "12px", fontWeight: 600 }}>
                 Xem tất cả
               </button>
             </div>
+
             <div className="space-y-2.5">
-              {todayTasks.map((task) => (
-                <div key={task.id} className="bg-white dark:bg-[#1a2030] rounded-xl p-3 border border-slate-200 dark:border-[#252d3d] dark:hover:border-[#3a4455] hover:border-slate-300 transition-colors">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="text-xs font-medium text-slate-950 dark:text-gray-200 leading-tight line-clamp-2">{task.title}</p>
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0 ${priorityColors[task.priority]}`}>
-                      {task.priority}
+              {taskList.map((task) => {
+                const pConfig = priorityConfig[task.priority as keyof typeof priorityConfig];
+                return (
+                  <div key={task.id} className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer group ${task.done ? "opacity-60" : "hover:border-indigo-200 hover:shadow-sm"}`} style={{ borderColor: "#F1F5F9", background: task.done ? "#FAFAFA" : "#fff" }}>
+                    <button className="mt-0.5 shrink-0 transition-colors">
+                      {task.done ? (
+                        <CheckCircle2 size={16} className="text-indigo-400" />
+                      ) : (
+                        <Circle size={16} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                      )}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className={`truncate ${task.done ? "line-through text-slate-400" : "text-slate-800"}`} style={{ fontSize: "13px", fontWeight: 500 }}>
+                        {task.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="px-2 py-0.5 rounded-md" style={{ fontSize: "10px", fontWeight: 600, color: task.subjectColor, background: `${task.subjectColor}15` }}>
+                          {task.subject}
+                        </span>
+                        <Clock size={9} className="text-slate-400" />
+                        <span className="text-slate-400" style={{ fontSize: "10px" }}>{task.dueTime}</span>
+                      </div>
+                    </div>
+                    <span className="shrink-0 px-2 py-0.5 rounded-lg" style={{ fontSize: "10px", fontWeight: 600, color: pConfig.color, background: pConfig.bg }}>
+                      {pConfig.label}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] text-slate-500 dark:text-gray-400">{task.subject} · {task.deadline}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-gray-400">{task.progress}%</span>
-                  </div>
-                  <div className="h-1 bg-[#252d3d] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all"
-                      style={{ width: `${task.progress}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </motion.div>
 
-          {/* Quick actions */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5 }}
-            className="bg-white border border-slate-200 dark:bg-[#161b27] dark:border-[#252d3d] rounded-2xl p-5"
-          >
-            <h3 className="text-sm font-semibold text-slate-950 dark:text-white mb-3">Thao tác nhanh</h3>
-            <div className="space-y-2">
-              {[
-                { icon: Plus, label: 'Thêm task mới', iconClass: 'text-blue-400', bg: 'bg-blue-500/10', page: 'tasks' as Page },
-                { icon: Timer, label: 'Bắt đầu Pomodoro', iconClass: 'text-purple-400', bg: 'bg-purple-500/10', page: 'pomodoro' as Page },
-                { icon: Bot, label: 'Hỏi AI Assistant', iconClass: 'text-green-400', bg: 'bg-green-500/10', page: 'ai' as Page },
-              ].map((action, i) => (
-                <button
-                  key={i}
-                  onClick={() => {}}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-900 dark:bg-[#1a2030] dark:hover:bg-[#1e2534] dark:text-gray-200 border border-slate-200 dark:border-[#252d3d] dark:hover:border-[#3a4455] transition-all text-left group"
-                >
-                  <div className={`w-7 h-7 ${action.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                    <action.icon className={`w-3.5 h-3.5 ${action.iconClass}`} />
-                  </div>
-                  <span className="text-xs text-slate-700 dark:text-gray-300 group-hover:text-slate-950 dark:group-hover:text-white transition-colors">{action.label}</span>
-                  <ChevronRight className="w-3 h-3 text-slate-400 dark:text-gray-400 ml-auto group-hover:text-slate-600 dark:group-hover:text-white transition-colors" />
-                </button>
-              ))}
+            <div className="mt-5 pt-4" style={{ borderTop: "1px solid #F1F5F9" }}>
+              <p className="text-slate-400 mb-3" style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Thao tác nhanh</p>
+              <div className="space-y-2">
+                {[
+                  { icon: <Plus size={14} />, label: "Thêm nhiệm vụ", color: "#6366F1", bg: "#EEF2FF" },
+                  { icon: <BookMarked size={14} />, label: "Ghi chú nhanh", color: "#0EA5E9", bg: "#F0F9FF" },
+                  { icon: <GitPullRequest size={14} />, label: "Thêm dự án", color: "#10B981", bg: "#F0FDF4" },
+                ].map((action) => (
+                  <button key={action.label} className="w-full flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-slate-50 transition-all group text-left">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: action.bg, color: action.color }}>
+                      {action.icon}
+                    </div>
+                    <span className="text-slate-600 group-hover:text-slate-900 transition-colors" style={{ fontSize: "12px", fontWeight: 500 }}>
+                      {action.label}
+                    </span>
+                    <ChevronRight size={12} className="text-slate-300 ml-auto group-hover:text-slate-400" />
+                  </button>
+                ))}
+              </div>
             </div>
           </motion.div>
-        </div>
+        </aside>
       </div>
     </div>
   );

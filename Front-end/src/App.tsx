@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 // ĐÂY LÀ DÒNG BỊ THIẾU GÂY LỖI TRẮNG MÀN HÌNH:
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Contexts
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -40,24 +40,38 @@ const pageMap: Record<Page, ReactNode> = {
 // Component chứa logic giao diện chính (Yêu cầu đăng nhập)
 function MainLayout() {
   const { isAuthenticated } = useAuth();
-  
+  const location = useLocation();
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const [collapsed, setCollapsed] = useState(false);
   
   // Cổng bảo vệ: Nếu chưa đăng nhập, tự động đá về trang /login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
+  // Update currentPage khi URL thay đổi
+  useEffect(() => {
+    const path = location.pathname.replace('/dashboard/', '').replace('/', '');
+    if (path === '' || path === 'dashboard') {
+      setCurrentPage('dashboard');
+    } else if (path === 'tasks') {
+      setCurrentPage('tasks');
+    } else if (path === 'kanban') {
+      setCurrentPage('kanban');
+    } else if (path === 'schedule') {
+      setCurrentPage('schedule');
+    } else if (path === 'pomodoro') {
+      setCurrentPage('pomodoro');
+    } else if (path === 'ai-assistant') {
+      setCurrentPage('ai');
+    } else if (path === 'study-groups') {
+      setCurrentPage('groups');
+    }
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-white transition-colors duration-300">
       <div className="flex min-h-screen">
-        <Sidebar 
-          currentPage={currentPage} 
-          setCurrentPage={setCurrentPage} 
-          collapsed={collapsed} 
-          setCollapsed={setCollapsed} 
-        />
+        <Sidebar />
         <div className="flex min-h-screen flex-1 flex-col">
           <Header />
           <main className="flex-1 overflow-auto p-4">
@@ -82,7 +96,19 @@ export default function App() {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            {/* Mọi đường dẫn khác đều trỏ vào MainLayout */}
+            {/* Routes cho dashboard */}
+            <Route path="/dashboard" element={<MainLayout />} />
+            <Route path="/dashboard/tasks" element={<MainLayout />} />
+            <Route path="/dashboard/kanban" element={<MainLayout />} />
+            <Route path="/dashboard/schedule" element={<MainLayout />} />
+            <Route path="/dashboard/pomodoro" element={<MainLayout />} />
+            <Route path="/dashboard/ai-assistant" element={<MainLayout />} />
+            <Route path="/dashboard/study-groups" element={<MainLayout />} />
+
+            {/* Mặc định về dashboard */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            {/* Mọi đường dẫn khác */}
             <Route path="/*" element={<MainLayout />} />
           </Routes>
         </BrowserRouter>
