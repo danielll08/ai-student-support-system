@@ -4,245 +4,393 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, GripVertical, Check, MessageCircle, X, Search, Filter, 
-  CalendarDays, ChevronDown, Share2, Users, Layout, Zap, MoreHorizontal, Clock, ArrowLeft
+  ChevronDown, Share2, Layout, MoreHorizontal, Clock, ArrowLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-// Đảm bảo đường dẫn import này đúng với project của bạn
 import { TaskDetailModal, KanbanTask, Status, Priority } from './TaskDetailModal'; 
 
-interface DragItem { id: string; status: Status; }
+interface DragItem { id: string; status: string; }
 
-const priorityConfig: Record<Priority, { color: string; border: string }> = {
-  HIGH: { color: 'text-rose-500', border: 'border-l-rose-500' },
-  MEDIUM: { color: 'text-amber-500', border: 'border-l-amber-500' },
-  LOW: { color: 'text-emerald-500', border: 'border-l-emerald-500' },
+const priorityConfig: Record<string, { color: string; border: string; glow: string; badge: string }> = {
+  HIGH: { color: 'text-rose-500', border: 'border-l-rose-500', glow: 'hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]', badge: 'bg-rose-500/10 text-rose-500' },
+  MEDIUM: { color: 'text-amber-500', border: 'border-l-amber-500', glow: 'hover:shadow-[0_0_15px_rgba(245,158,11,0.3)]', badge: 'bg-amber-500/10 text-amber-500' },
+  LOW: { color: 'text-emerald-500', border: 'border-l-emerald-500', glow: 'hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]', badge: 'bg-emerald-500/10 text-emerald-500' },
+  NONE: { color: 'text-slate-400', border: 'border-l-slate-300 dark:border-l-slate-700', glow: 'hover:shadow-md', badge: '' },
 };
 
-const columnConfig: Record<Status, { label: string; dot: string }> = {
-  TODO: { label: 'Cần làm', dot: 'bg-slate-400 dark:bg-slate-500' },
-  DOING: { label: 'Đang làm', dot: 'bg-blue-500' },
-  DONE: { label: 'Hoàn thành', dot: 'bg-emerald-500' },
-};
+const STORAGE_KEY = 'kanban-board-tasks-v5';
+const scrollbarClasses = "[&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar]:h-[8px] [&::-webkit-scrollbar-track]:bg-black/10 [&::-webkit-scrollbar-thumb]:bg-white/30 hover:[&::-webkit-scrollbar-thumb]:bg-white/50 dark:[&::-webkit-scrollbar-thumb]:bg-white/20 dark:hover:[&::-webkit-scrollbar-thumb]:bg-cyan-500/50 [&::-webkit-scrollbar-thumb]:rounded transition-colors";
 
-const nextStatus: Record<Status, Status> = { TODO: 'DOING', DOING: 'DONE', DONE: 'TODO' };
-const STORAGE_KEY = 'kanban-board-tasks-v2';
-const scrollbarClasses = "[&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar]:h-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200/50 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-[#2a3441]/50 dark:hover:[&::-webkit-scrollbar-thumb]:bg-[#3b4b5e] [&::-webkit-scrollbar-thumb]:rounded-full";
-
-// Mock Data
 const loadStoredTasks = (): KanbanTask[] => {
   if (typeof window === 'undefined') return [];
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (!stored) return [];
   try {
-    const parsed = JSON.parse(stored) as KanbanTask[];
-    return parsed.map((task, index) => ({
+    return (JSON.parse(stored) as KanbanTask[]).map((task, index) => ({
       ...task,
       order: typeof task.order === 'number' ? task.order : index,
       dueDate: task.dueDate ? new Date(task.dueDate) : null,
       startDate: task.startDate ? new Date(task.startDate) : null,
     }));
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 };
 
 // --- CARD COMPONENT ---
 function KanbanTaskCard({ task, moveTask, onSelect, taskComments }: any) {
-  const [{ isDragging }, dragRef] = useDrag(() => ({ type: 'TASK', item: { id: task.id, status: task.status }, collect: (m) => ({ isDragging: m.isDragging() }) }), [task.id, task.status]);
-  const pc = priorityConfig[task.priority as Priority] || priorityConfig.MEDIUM;
+  const [{ isDragging }, dragRef] = useDrag(() => ({ 
+    type: 'TASK', 
+    item: { id: task.id, status: task.status }, 
+    collect: (m) => ({ isDragging: m.isDragging() }) 
+  }), [task.id, task.status]);
+  
+  const pc = priorityConfig[task.priority as string] || priorityConfig.NONE;
+  const isDone = task.status === 'DONE';
 
   return (
-    <div ref={dragRef} className="pb-2">
-      <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} onClick={() => onSelect(task)} 
-        className={`relative bg-white dark:bg-[#181e29] rounded-xl p-3.5 cursor-grab active:cursor-grabbing transition-all duration-200 group border-y border-r border-slate-200 dark:border-[#2a3441] border-l-[4px] ${pc.border} hover:shadow-md hover:-translate-y-0.5 ${isDragging ? 'opacity-50 scale-105 shadow-2xl' : 'shadow-sm'}`}>
+    // [ĐÃ SỬA LỖI TYPESCRIPT Ở ĐÂY]
+    <div ref={(node) => { dragRef(node); }} onClick={() => onSelect(task)} className="pb-2.5 relative group cursor-pointer">
+      <motion.div 
+        layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} 
+        className={`relative bg-white dark:bg-[#22272b] rounded-md p-3 transition-all duration-300 border border-slate-200 dark:border-[#384148] border-l-[3px] ${pc.border} ${pc.glow} hover:-translate-y-0.5 ${isDragging ? 'opacity-40 scale-[1.02] shadow-xl z-50' : 'shadow-sm'}`}
+      >
         <div className="flex items-start justify-between gap-2 mb-2">
-          <p className={`text-sm font-semibold leading-snug ${task.status === 'DONE' ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-gray-100'}`}>{task.title}</p>
-          <GripVertical className="w-4 h-4 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 cursor-grab mt-0.5" />
+          <div className="flex flex-col gap-1.5">
+            {task.priority && task.priority !== 'NONE' && (
+              <span className={`w-max text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-sm tracking-wider ${pc.badge}`}>{task.priority}</span>
+            )}
+            <p className={`text-[13px] font-medium leading-snug ${isDone ? 'line-through text-slate-400' : 'text-slate-800 dark:text-[#b6c2cf]'}`}>{task.title}</p>
+          </div>
+          <GripVertical className="w-4 h-4 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 flex-shrink-0 cursor-grab mt-0.5" />
         </div>
         
-        <div className="flex items-center gap-3 mt-3 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-          {task.dueDate && <span className={`flex items-center gap-1.5 ${task.status === 'DONE' ? 'text-emerald-500' : ''}`}><Clock className="w-3.5 h-3.5"/> {format(new Date(task.dueDate), 'MMM d')}</span>}
-          {task.checklists && task.checklists.length > 0 && <div className="flex items-center gap-1.5"><Check className={`w-3.5 h-3.5 ${task.checklists.reduce((sum: number, c: any) => sum + c.items.filter((it: any) => it.checked).length, 0) === task.checklists.reduce((sum: number, c: any) => sum + c.items.length, 0) ? 'text-emerald-500' : ''}`} />{task.checklists.reduce((sum: number, c: any) => sum + c.items.filter((it: any) => it.checked).length, 0)}/{task.checklists.reduce((sum: number, c: any) => sum + c.items.length, 0)}</div>}
-          {taskComments[task.id] && taskComments[task.id].length > 0 && <div className="flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> {taskComments[task.id].length}</div>}
-        </div>
+        {(task.dueDate || task.checklists?.length > 0 || taskComments[task.id]?.length > 0) && (
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+            <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-[#8c9bab] font-medium">
+              {task.dueDate && (
+                <span className={`flex items-center gap-1 p-1 rounded-sm ${isDone ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-black/20'}`}>
+                  <Clock className="w-3 h-3"/> {format(new Date(task.dueDate), 'MMM d')}
+                </span>
+              )}
+              {task.checklists?.length > 0 && (
+                <div className="flex items-center gap-1 hover:text-cyan-400">
+                  <Check className="w-3.5 h-3.5" />
+                  {task.checklists.reduce((sum: number, c: any) => sum + c.items.filter((it: any) => it.checked).length, 0)}/{task.checklists.reduce((sum: number, c: any) => sum + c.items.length, 0)}
+                </div>
+              )}
+              {taskComments[task.id]?.length > 0 && (
+                <div className="flex items-center gap-1 hover:text-cyan-400"><MessageCircle className="w-3.5 h-3.5" /> {taskComments[task.id].length}</div>
+              )}
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );
 }
 
-// --- COLUMN COMPONENT ---
-function KanbanColumn({ status, tasks, moveTask, onAdd, onSelect, taskComments }: any) {
-  const [{ isOver }, dropRef] = useDrop(() => ({ accept: 'TASK', drop: (item: DragItem) => moveTask(item.id, status), collect: (m) => ({ isOver: m.isOver() }) }), [status]);
-  const cfg = columnConfig[status as Status];
+// --- COLUMN COMPONENT (Cột động - Xử lý Inline Input) ---
+function KanbanColumn({ status, colConfig, tasks, moveTask, addingTaskToCol, setAddingTaskToCol, newTitle, setNewTitle, newPriority, setNewPriority, onSaveTask, onSelect, taskComments }: any) {
+  const [{ isOver }, dropRef] = useDrop(() => ({ 
+    accept: 'TASK', 
+    drop: (item: DragItem) => moveTask(item.id, status), 
+    collect: (m) => ({ isOver: m.isOver() }) 
+  }), [status]);
+
+  const isAddingHere = addingTaskToCol === status;
 
   return (
-    <div ref={dropRef} className={`w-[320px] sm:w-[340px] flex-shrink-0 flex flex-col h-full rounded-2xl transition-all duration-300 ${isOver ? 'bg-slate-100/80 dark:bg-[#121c2e] ring-1 ring-blue-400' : 'bg-slate-100/50 dark:bg-[#10141f]'}`}>
-      <div className="px-4 py-4 shrink-0 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{cfg.label}</span>
-          <span className="text-[11px] font-bold text-slate-500 bg-slate-200/70 dark:bg-[#252d3d] px-2 py-0.5 rounded-full">{tasks.length}</span>
+    <div 
+      // [ĐÃ SỬA LỖI TYPESCRIPT Ở ĐÂY]
+      ref={(node) => { dropRef(node); }} 
+      className={`w-[280px] sm:w-[300px] flex-shrink-0 flex flex-col max-h-full h-fit rounded-md transition-all duration-300 border-t-[3px] ${colConfig.border} bg-slate-100/90 dark:bg-[#101204] backdrop-blur-md shadow-md border-x border-b border-transparent dark:border-white/10 ${isOver ? 'ring-1 ring-cyan-500/50' : ''}`}
+    >
+      <div className="px-3 py-2.5 shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/50">
+        <div className="flex items-center gap-2">
+          <div className={`w-2.5 h-2.5 rounded-sm ${colConfig.dot}`} />
+          <span className="text-[14px] font-bold text-slate-800 dark:text-[#b6c2cf]">{colConfig.label}</span>
+          <span className="text-xs font-semibold text-slate-500 bg-black/5 dark:bg-[#22272b] px-2 py-0.5 rounded-sm shadow-inner">{tasks.length}</span>
         </div>
-        <button className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors p-1"><MoreHorizontal className="w-4 h-4" /></button>
+        <button className="text-slate-400 hover:text-cyan-500 transition-colors p-1 rounded-sm hover:bg-slate-200 dark:hover:bg-[#2a3441]"><MoreHorizontal className="w-4 h-4" /></button>
       </div>
-      <div className={`flex-1 overflow-y-auto min-h-0 px-3 ${scrollbarClasses}`}>
+      
+      <div className={`flex-1 overflow-y-auto min-h-0 px-2.5 pt-2.5 ${scrollbarClasses}`}>
         <AnimatePresence>
-          {tasks.map((task: KanbanTask) => <KanbanTaskCard key={task.id} task={task} moveTask={moveTask} onSelect={onSelect} taskComments={taskComments} />)}
+          {tasks.map((task: KanbanTask) => (
+            <KanbanTaskCard key={task.id} task={task} moveTask={moveTask} onSelect={onSelect} taskComments={taskComments} />
+          ))}
         </AnimatePresence>
       </div>
-      <div className="p-3 shrink-0">
-        <button onClick={() => onAdd(status)} className="w-full flex items-center gap-2 rounded-xl text-slate-500 dark:text-slate-400 py-2 text-sm font-medium hover:bg-slate-200/60 dark:hover:bg-[#1c2333] hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
-          <Plus className="w-4 h-4" /> Thêm công việc
-        </button>
-      </div>
+      
+      {isAddingHere ? (
+        <div className="p-2 shrink-0 bg-slate-200/50 dark:bg-[#1c2126] rounded-b-md border-t border-slate-200 dark:border-white/5">
+          <textarea
+            autoFocus
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSaveTask(); }
+              if (e.key === 'Escape') setAddingTaskToCol(null);
+            }}
+            placeholder="Nhập tiêu đề cho thẻ này..."
+            className="w-full p-2 text-[13px] bg-white dark:bg-[#22272b] border border-slate-300 dark:border-[#384148] rounded-md shadow-sm resize-none focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 dark:text-[#b6c2cf] mb-2"
+            rows={2}
+          />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <button onClick={onSaveTask} disabled={!newTitle.trim()} className="bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-300 disabled:dark:bg-[#2a3441] disabled:text-slate-500 text-white px-3 py-1.5 rounded text-[13px] font-semibold transition-colors">
+                Thêm thẻ
+              </button>
+              <button onClick={() => setAddingTaskToCol(null)} className="p-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-[#b6c2cf] transition-colors rounded hover:bg-slate-300 dark:hover:bg-[#2a3441]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <select value={newPriority} onChange={(e) => setNewPriority(e.target.value)} className="bg-white dark:bg-[#22272b] border border-slate-300 dark:border-[#384148] text-slate-600 dark:text-[#b6c2cf] text-[11px] font-semibold rounded px-1.5 py-1 focus:outline-none focus:border-cyan-500 shadow-sm cursor-pointer">
+              <option value="NONE">Không ưu tiên</option>
+              <option value="HIGH">Độ ưu tiên: Cao</option>
+              <option value="MEDIUM">Độ ưu tiên: Vừa</option>
+              <option value="LOW">Độ ưu tiên: Thấp</option>
+            </select>
+          </div>
+        </div>
+      ) : (
+        <div className="p-2 shrink-0">
+          <button 
+            onClick={() => {
+              setAddingTaskToCol(status);
+              setNewTitle('');
+              setNewPriority('NONE');
+            }} 
+            className="w-full flex items-center gap-2 rounded-md text-slate-500 dark:text-[#8c9bab] py-1.5 px-2 text-[13px] font-semibold hover:bg-slate-200 dark:hover:bg-[#2a3441] hover:text-slate-800 dark:hover:text-white transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Thêm thẻ
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// --- COMPONENT BẢNG CHI TIẾT ---
-interface BoardDetailProps {
-  boardName: string;
-  onBack: () => void;
-}
-
-export function BoardDetail({ boardName, onBack }: BoardDetailProps) {
+// --- COMPONENT BẢNG CHI TIẾT CHÍNH ---
+export function BoardDetail({ board, onBack }: { board: any; onBack: () => void; }) {
   const [allTasks, setAllTasks] = useState<KanbanTask[]>(loadStoredTasks());
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterPriority, setFilterPriority] = useState<Priority | 'ALL'>('ALL');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newTaskStatus, setNewTaskStatus] = useState<Status>('TODO');
+  const [filterPriority, setFilterPriority] = useState<string>('ALL');
+  
+  const [columns, setColumns] = useState([
+    { id: 'TODO', label: 'Cần làm', dot: 'bg-slate-400', border: 'border-t-slate-500' },
+    { id: 'DOING', label: 'Đang làm', dot: 'bg-cyan-500', border: 'border-t-cyan-500' },
+    { id: 'DONE', label: 'Hoàn thành', dot: 'bg-emerald-500', border: 'border-t-emerald-500' },
+  ]);
+  
+  const [addingTaskToCol, setAddingTaskToCol] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
-  const [newPriority, setNewPriority] = useState<Priority>('MEDIUM');
+  const [newPriority, setNewPriority] = useState<string>('NONE');
 
-  const [taskComments, setTaskComments] = useState<{ [key: string]: any[] }>({
-    'task-2': [{ author: 'Quản lý', text: 'Nhớ check kỹ responsive nhé!', time: '1 giờ trước', avatar: 'QL' }]
-  });
+  const [isAddingList, setIsAddingList] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [taskComments, setTaskComments] = useState<{ [key: string]: any[] }>({});
 
   useEffect(() => { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(allTasks)); }, [allTasks]);
 
-  const projectTasks = allTasks.filter(t => !t.scope || t.scope === 'PROJECT');
-  const filteredTasks = projectTasks.filter(t => {
+  const filteredTasks = allTasks.filter(t => {
     const matchSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchPriority = filterPriority === 'ALL' || t.priority === filterPriority;
     return matchSearch && matchPriority;
   });
-
-  const moveTask = (id: string, newStatus: Status, newPosition?: number) => {
+  
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [currentBoardName, setCurrentBoardName] = useState(board?.name || 'Chi tiết bảng');
+  
+  const moveTask = (id: string, newStatus: string) => {
     setAllTasks(prev => {
       const taskIndex = prev.findIndex(t => t.id === id);
       if (taskIndex === -1) return prev;
-      const task = prev[taskIndex];
-      const updatedTask = { ...task, status: newStatus, progress: newStatus === 'DONE' ? 100 : (task.progress === 100 ? 50 : task.progress) };
-
+      const updatedTask = { ...prev[taskIndex], status: newStatus as Status };
       let newTasks = [...prev];
       newTasks.splice(taskIndex, 1);
-      if (newPosition !== undefined) {
-        const tasksInTarget = newTasks.filter(t => t.status === newStatus);
-        const targetIndexInFiltered = newPosition - 1; 
-        if (targetIndexInFiltered >= tasksInTarget.length) newTasks.push(updatedTask); 
-        else {
-          const taskAtSlot = tasksInTarget[targetIndexInFiltered];
-          const globalInsertIndex = newTasks.findIndex(t => t.id === taskAtSlot.id);
-          newTasks.splice(globalInsertIndex, 0, updatedTask);
-        }
-      } else newTasks.push(updatedTask); 
+      newTasks.push(updatedTask); 
       return newTasks.map((t, i) => ({ ...t, order: i }));
     });
-    if (selectedTask?.id === id) setSelectedTask(prev => prev ? { ...prev, status: newStatus, progress: newStatus === 'DONE' ? 100 : (prev.progress === 100 ? 50 : prev.progress) } : null);
   };
 
-  const openAddModal = (status: Status) => { setNewTaskStatus(status); setNewTitle(''); setNewPriority('MEDIUM'); setShowAddModal(true); };
+  const handleAddList = () => {
+    if (!newListName.trim()) return;
+    const newCol = {
+      id: `COL_${Date.now()}`,
+      label: newListName,
+      dot: 'bg-purple-500',
+      border: 'border-t-purple-500'
+    };
+    setColumns([...columns, newCol]);
+    setNewListName('');
+    setIsAddingList(false);
+  };
   
   const addTask = () => {
-    if (!newTitle.trim()) return;
-    const newTask: KanbanTask = { id: `new-${Date.now()}`, title: newTitle, priority: newPriority, status: newTaskStatus, progress: newTaskStatus === 'DONE' ? 100 : 0, order: projectTasks.length, scope: 'PROJECT', labels: ['Dự án'] };
+    if (!newTitle.trim() || !addingTaskToCol) return;
+    const newTask: KanbanTask = { 
+      id: `task-${Date.now()}`, 
+      title: newTitle, 
+      priority: newPriority as Priority, 
+      status: addingTaskToCol as Status, 
+      progress: 0, 
+      order: allTasks.length, 
+      scope: 'PROJECT', 
+      labels: [] 
+    };
     setAllTasks(prev => [...prev, newTask]);
-    setShowAddModal(false);
+    setNewTitle('');
+    setNewPriority('NONE');
   };
 
-  const updateTask = (updated: KanbanTask) => { setAllTasks(prev => prev.map(t => t.id === updated.id ? updated : t)); setSelectedTask(updated); };
-  const handleAddComment = (text: string) => {
-    if(!selectedTask) return;
-    setTaskComments(prev => ({ ...prev, [selectedTask.id]: [{ author: 'Bạn', text, time: 'Vừa xong', avatar: 'ME' }, ...(prev[selectedTask.id] || [])] }));
-  };
+  const isImageBg = board?.bgType === 'image';
+  const bgStyle = isImageBg ? { backgroundImage: `url('${board.bg}')`, backgroundSize: 'cover', backgroundPosition: 'center' } : {};
+  const bgClass = !isImageBg && board?.bg ? board.bg : 'bg-slate-50 dark:bg-[#0b1120]';
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="absolute inset-0 flex flex-col overflow-hidden bg-white dark:bg-[#080c14] font-sans">
-        {/* HEADER CHI TIẾT BẢNG */}
-        <header className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-[#1e2532] bg-white dark:bg-[#080c14] z-20">
-          <div className="flex items-center gap-3 mb-3 sm:mb-0">
-            {/* NÚT BACK */}
-            <button onClick={onBack} className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-[#1e2532] transition-colors" title="Trở về danh sách dự án">
+      {/* SỬA LẠI DÒNG NÀY: Dùng fixed inset-0 và z-[100] để che hoàn toàn Header/Sidebar */}
+      <div 
+        className={`fixed inset-0 z-[100] flex flex-col overflow-hidden transition-colors font-sans ${bgClass}`}
+        style={bgStyle}
+      >
+        {isImageBg && <div className="absolute inset-0 bg-black/40 z-0 backdrop-blur-[2px]"></div>}
+
+        {/* HEADER */}
+        <header className="relative z-10 shrink-0 flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3 bg-white/80 dark:bg-[#0b1120]/80 backdrop-blur-md border-b border-slate-200/50 dark:border-white/10">
+          <div className="flex items-center gap-3">
+            <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-md text-slate-700 hover:bg-black/10 dark:text-slate-300 dark:hover:bg-white/10 transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="hidden sm:block w-[1px] h-5 bg-slate-200 dark:bg-slate-700"></div>
-            <h1 className="font-extrabold text-xl lg:text-2xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
-              <Layout className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-              {boardName}
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-2 mr-2">
-              <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-[11px] font-bold ring-2 ring-white dark:ring-[#080c14] z-20">TC</div>
-              <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-[11px] font-bold ring-2 ring-white dark:ring-[#080c14] z-10">NV</div>
-              <div className="w-8 h-8 rounded-full border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#151b28] flex items-center justify-center text-slate-400 hover:text-blue-500 cursor-pointer transition-colors z-0"><Plus className="w-4 h-4" /></div>
+            <div className="w-[1px] h-5 bg-slate-400 dark:bg-slate-600"></div>
+            
+            <div className="flex items-center gap-2">
+              <Layout className="w-4 h-4 text-cyan-500" /> 
+              {isEditingName ? (
+                <input
+                  autoFocus
+                  value={currentBoardName}
+                  onChange={(e) => setCurrentBoardName(e.target.value)}
+                  onBlur={() => setIsEditingName(false)}
+                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
+                  className="font-bold text-lg text-slate-900 dark:text-white bg-white/50 dark:bg-black/30 border-2 border-cyan-500 rounded px-2 py-0.5 focus:outline-none w-48 sm:w-64 transition-all"
+                />
+              ) : (
+                <h1 
+                  onClick={() => setIsEditingName(true)}
+                  className="font-bold text-lg text-slate-900 dark:text-white cursor-pointer hover:bg-slate-200/50 dark:hover:bg-white/10 px-2 py-0.5 rounded transition-colors"
+                  title="Nhấn để đổi tên bảng"
+                >
+                  {currentBoardName}
+                </h1>
+              )}
             </div>
-            <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-[#1e2532] dark:hover:bg-[#2a3441] text-slate-700 dark:text-slate-200 text-sm font-semibold transition-colors"><Share2 className="w-4 h-4" /> <span>Chia sẻ</span></button>
+          </div>
+          
+          <div className="flex items-center gap-4 mt-2 sm:mt-0">
+            <div className="flex -space-x-2 mr-1">
+              <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white/50 z-20">TC</div>
+              <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white/50 z-10">NV</div>
+            </div>
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/20 hover:bg-white/30 text-slate-900 dark:text-white text-[13px] font-semibold transition-all backdrop-blur-sm border border-slate-300/50 dark:border-white/20">
+              <Share2 className="w-4 h-4" /> <span>Chia sẻ</span>
+            </button>
           </div>
         </header>
 
         {/* TOOLBAR */}
-        <div className="shrink-0 px-6 py-3 flex flex-wrap items-center gap-3 z-10">
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input type="text" placeholder="Tìm kiếm..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-[#10141f] border border-transparent rounded-lg text-sm text-slate-800 dark:text-white focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#151b28] focus:ring-2 focus:ring-blue-500/20 transition-all" />
+        <div className="relative z-10 shrink-0 px-5 py-2.5 flex flex-wrap items-center gap-3 bg-white/40 dark:bg-black/20 backdrop-blur-sm border-b border-slate-200/50 dark:border-white/10">
+          <div className="relative w-full sm:w-60 group">
+            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-300" />
+            <input type="text" placeholder="Tìm kiếm thẻ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-8 pr-3 py-1 bg-white/60 dark:bg-[#101204]/60 border border-transparent rounded-md text-[13px] text-slate-900 dark:text-white focus:outline-none focus:bg-white dark:focus:bg-[#151b28] focus:ring-1 focus:ring-cyan-500 transition-all placeholder:text-slate-500 dark:placeholder:text-[#8c9bab]" />
           </div>
-          <div className="relative w-full sm:w-40 flex-shrink-0">
-            <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as Priority | 'ALL')} className="w-full pl-9 pr-8 py-2 bg-slate-100 dark:bg-[#10141f] border border-transparent rounded-lg text-sm text-slate-800 dark:text-white focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#151b28] focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer transition-all">
-              <option value="ALL">Mọi ưu tiên</option><option value="HIGH">Ưu tiên Cao</option><option value="MEDIUM">Trung bình</option><option value="LOW">Ưu tiên Thấp</option>
+
+          <div className="relative w-full sm:w-44 flex-shrink-0">
+            <Filter className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-300 pointer-events-none" />
+            <select 
+              value={filterPriority} 
+              onChange={(e) => setFilterPriority(e.target.value)} 
+              className="w-full pl-8 pr-7 py-1 bg-white/60 dark:bg-[#101204]/60 border border-transparent rounded-md text-[13px] text-slate-900 dark:text-white focus:outline-none focus:bg-white dark:focus:bg-[#151b28] focus:ring-1 focus:ring-cyan-500 appearance-none cursor-pointer transition-all"
+            >
+              <option value="ALL">Mọi ưu tiên</option>
+              <option value="HIGH">Ưu tiên Cao</option>
+              <option value="MEDIUM">Trung bình</option>
+              <option value="LOW">Ưu tiên Thấp</option>
+              <option value="NONE">Không ưu tiên</option>
             </select>
-            <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-300 pointer-events-none" />
           </div>
         </div>
 
         {/* BOARD CANVAS */}
-        <main className={`flex-1 min-h-0 overflow-x-auto overflow-y-hidden flex gap-5 px-6 pb-6 pt-2 items-start ${scrollbarClasses}`}>
-          {(['TODO', 'DOING', 'DONE'] as Status[]).map((colStatus) => (
-            <KanbanColumn key={colStatus} status={colStatus} tasks={filteredTasks.filter(t => t.status === colStatus).sort((a, b) => a.order - b.order)} moveTask={moveTask} onAdd={openAddModal} onSelect={setSelectedTask} taskComments={taskComments} />
+        <main className={`relative z-10 flex-1 min-h-0 overflow-x-auto overflow-y-hidden flex gap-3.5 px-5 pb-5 pt-4 items-start ${scrollbarClasses}`}>
+          {columns.map((col) => (
+            <KanbanColumn 
+              key={col.id} 
+              status={col.id} 
+              colConfig={col}
+              tasks={filteredTasks.filter(t => t.status === col.id).sort((a, b) => a.order - b.order)} 
+              moveTask={moveTask} 
+              onSelect={setSelectedTask} 
+              taskComments={taskComments}
+              
+              addingTaskToCol={addingTaskToCol}
+              setAddingTaskToCol={setAddingTaskToCol}
+              newTitle={newTitle}
+              setNewTitle={setNewTitle}
+              newPriority={newPriority}
+              setNewPriority={setNewPriority}
+              onSaveTask={addTask}
+            />
           ))}
-          <div className="w-[320px] sm:w-[340px] flex-shrink-0">
-            <button className="w-full flex items-center gap-2 p-3.5 rounded-2xl border border-dashed border-slate-300 dark:border-[#2a3441] text-slate-500 dark:text-slate-400 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-[#10141f] transition-colors"><Plus className="w-4 h-4" /> Thêm danh sách khác</button>
+
+          {/* FORM THÊM DANH SÁCH */}
+          <div className="w-[280px] sm:w-[300px] flex-shrink-0 pt-0 h-fit">
+            {isAddingList ? (
+              <div className="bg-slate-100 dark:bg-[#101204] p-2 rounded-md border border-slate-300 dark:border-[#384148] shadow-md">
+                <input 
+                  autoFocus 
+                  value={newListName} 
+                  onChange={(e) => setNewListName(e.target.value)} 
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddList()} 
+                  placeholder="Nhập tiêu đề danh sách..." 
+                  className="w-full px-2.5 py-1.5 text-[13px] bg-white dark:bg-[#22272b] border border-slate-300 dark:border-[#384148] rounded-md focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 dark:text-[#b6c2cf]" 
+                />
+                <div className="flex items-center gap-1.5 mt-2">
+                  <button onClick={handleAddList} className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white text-[13px] font-semibold rounded-md transition-colors">
+                    Thêm danh sách
+                  </button>
+                  <button onClick={() => setIsAddingList(false)} className="p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-[#b6c2cf] transition-colors rounded-md hover:bg-slate-300 dark:hover:bg-[#2a3441]">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsAddingList(true)} 
+                className="w-full flex items-center gap-2 p-2.5 rounded-md bg-white/50 dark:bg-black/40 text-slate-800 dark:text-white text-[13px] font-semibold hover:bg-white/80 dark:hover:bg-black/60 transition-all backdrop-blur-md"
+              >
+                <Plus className="w-4 h-4" /> Thêm danh sách khác
+              </button>
+            )}
           </div>
         </main>
 
-        {/* MODALS */}
+        {/* MODAL CHI TIẾT THẺ KHI ĐƯỢC CLICK */}
         <AnimatePresence>
-          {selectedTask && <TaskDetailModal task={selectedTask} allTasks={allTasks} onClose={() => setSelectedTask(null)} onUpdate={updateTask} onMove={moveTask} taskComments={taskComments[selectedTask.id] || []} onAddComment={handleAddComment}/>}
-        </AnimatePresence>
-        <AnimatePresence>
-          {showAddModal && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}>
-              <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 10, opacity: 0 }} className="bg-white dark:bg-[#181e29] border border-slate-200 dark:border-[#2a3441] rounded-2xl p-6 w-full max-w-md shadow-2xl">
-                <div className="flex items-center justify-between mb-5 border-b border-slate-100 dark:border-slate-800/50 pb-4">
-                  <div><h3 className="text-lg font-bold text-slate-900 dark:text-white">Thêm công việc</h3><p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cột đích: <strong className="text-blue-600 dark:text-blue-400 uppercase tracking-wider">{columnConfig[newTaskStatus].label}</strong></p></div>
-                  <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-800 dark:hover:text-white p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#252d3d] transition-colors"><X className="w-5 h-5" /></button>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-[#9fadbc] mb-2 block uppercase tracking-wider">Tiêu đề công việc <span className="text-rose-500">*</span></label>
-                    <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTask()} autoFocus placeholder="VD: Khắc phục lỗi hiển thị..." className="w-full bg-slate-50 dark:bg-[#0b111a] border border-slate-200 dark:border-[#2a3441] rounded-lg px-4 py-2.5 text-sm text-slate-950 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
-                  </div>
-                </div>
-                <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/50">
-                  <button onClick={() => setShowAddModal(false)} className="flex-1 py-2.5 rounded-lg border border-slate-200 dark:border-[#2a3441] text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1c2333] transition-colors">Hủy</button>
-                  <button onClick={addTask} disabled={!newTitle.trim()} className="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">Thêm công việc</button>
-                </div>
-              </motion.div>
-            </motion.div>
+          {selectedTask && (
+            <TaskDetailModal 
+              task={selectedTask} 
+              allTasks={allTasks} 
+              onClose={() => setSelectedTask(null)} 
+              onUpdate={(updated: any) => { setAllTasks(prev => prev.map(t => t.id === updated.id ? updated : t)); setSelectedTask(updated); }} 
+              onMove={moveTask} 
+              taskComments={taskComments[selectedTask.id] || []} 
+              onAddComment={(text: string) => setTaskComments(prev => ({ ...prev, [selectedTask.id]: [{ author: 'Bạn', text, time: 'Vừa xong', avatar: 'ME' }, ...(prev[selectedTask.id] || [])] }))}
+            />
           )}
         </AnimatePresence>
       </div>

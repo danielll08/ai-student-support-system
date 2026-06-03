@@ -1,5 +1,5 @@
-export type Page = 'dashboard' | 'tasks' | 'kanban' | 'schedule' | 'pomodoro' | 'ai' | 'groups';
-
+// src/types.ts
+export type Page = 'dashboard' | 'tasks' | 'kanban' | 'schedule' | 'pomodoro' | 'groups' | 'profile';
 export type PriorityType = 'high' | 'medium' | 'low';
 export type TaskStatus = 'todo' | 'doing' | 'done';
 

@@ -1,234 +1,158 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Send, Paperclip, Image, Smile, MoreVertical, Info, Users } from 'lucide-react';
-import { mockGroups } from '@/data/mockData';
-
-interface ChatMessage {
-  id: number;
-  sender: string;
-  initials: string;
-  color: string;
-  text: string;
-  time: string;
-  isMe: boolean;
-}
-
-interface Group {
-  id: string;
-  name: string;
-  initials: string;
-  color: string;
-  lastMessage: string;
-  lastTime: string;
-  members: number;
-  unread?: number;
-  messages: ChatMessage[];
-}
-
-const groups: Group[] = mockGroups.map((group) => ({
-  id: group.id,
-  name: group.name,
-  initials: group.name.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase(),
-  color: group.subject === 'Java' ? 'from-purple-500 to-blue-500' : group.subject === 'Machine Learning' ? 'from-orange-500 to-red-500' : 'from-cyan-500 to-blue-500',
-  lastMessage: group.messages[group.messages.length - 1]?.content ?? '',
-  lastTime: new Date(group.lastActivity).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-  members: group.members.length,
-  unread: group.messages.some((msg) => msg.senderId !== 'user-1') ? 2 : 0,
-  messages: group.messages.map((msg) => ({
-    id: Number(String(msg.id).replace(/\D/g, '')) || Date.now(),
-    sender: msg.senderName,
-    initials: msg.senderName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
-    color: msg.senderId === 'user-1' ? 'from-purple-500 to-pink-500' : 'from-blue-500 to-cyan-500',
-    text: msg.content,
-    time: new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-    isMe: msg.senderId === 'user-1',
-  })),
-}));
+import { Hash, Send, Paperclip, MoreVertical, Users, FileText, Image as ImageIcon } from 'lucide-react';
 
 export function StudyGroups() {
-  const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id ?? 'g1');
-  const [groupData, setGroupData] = useState(groups);
-  const [inputText, setInputText] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [message, setMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const selectedGroup = groupData.find((g) => g.id === selectedGroupId) ?? groupData[0];
-
+  // Cuộn xuống tin nhắn mới nhất
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedGroup.messages]);
-
-  const sendMessage = () => {
-    const text = inputText.trim();
-    if (!text) return;
-    const msg: ChatMessage = {
-      id: Date.now(),
-      sender: 'Me',
-      initials: 'VA',
-      color: 'from-purple-500 to-pink-500',
-      text,
-      time: `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
-      isMe: true,
-    };
-    setGroupData(prev => prev.map(g =>
-      g.id === selectedGroupId
-        ? { ...g, messages: [...g.messages, msg], lastMessage: `Bạn: ${text.slice(0, 30)}...`, lastTime: msg.time, unread: 0 }
-        : g
-    ));
-    setInputText('');
-  };
-
-  const switchGroup = (id: number) => {
-    setSelectedGroupId(id);
-    setGroupData(prev => prev.map(g => g.id === id ? { ...g, unread: 0 } : g));
-  };
+    scrollToBottom();
+  }, [message]);
 
   return (
-    <div className="p-5 h-full flex flex-col">
-      <div className="mb-4">
-        <h1 className="text-xl font-bold text-slate-950 dark:text-white">Nhóm học tập</h1>
-        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Nhắn tin, chia sẻ tài liệu và hợp tác cùng nhóm học tập.</p>
-      </div>
+    <div className="h-full w-full flex bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
+      
+      {/* --- CỘT GIỮA: MAIN CHAT --- */}
+      <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#0b1120]">
+        
+        {/* Chat Header */}
+        <header className="h-14 px-5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-transparent">
+          <div className="flex items-center gap-2">
+            <Hash className="w-5 h-5 text-slate-400" />
+            <h2 className="text-[15px] font-bold text-slate-800 dark:text-white">Đồ án AI</h2>
+            <span className="text-[11px] font-medium text-slate-500 bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full ml-2">4 thành viên</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 lg:hidden"><Users className="w-5 h-5" /></button>
+            <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><MoreVertical className="w-5 h-5" /></button>
+          </div>
+        </header>
 
-      <div className="flex-1 flex gap-4 min-h-0">
-        {/* Group list */}
-        <div className="w-64 flex-shrink-0 bg-white dark:bg-[#161b27] border border-slate-200 dark:border-[#252d3d] rounded-2xl overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-[#252d3d]">
-            <input
-              placeholder="Tìm kiếm nhóm..."
-              className="w-full bg-white dark:bg-[#1a2030] border border-slate-200 dark:border-[#252d3d] rounded-xl px-3 py-2 text-xs text-slate-950 dark:text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-all"
+        {/* Lịch sử tin nhắn */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700">
+          
+          {/* Tin nhắn của người khác */}
+          <div className="flex gap-4">
+            <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
+              TR
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-[13px] font-bold text-slate-900 dark:text-white">Trần Quốc Bảo</span>
+                <span className="text-[10px] text-slate-500">Hôm nay lúc 10:24 AM</span>
+              </div>
+              <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                Mọi người ơi, phần model AI mình train xong rồi nhé. Accuracy đạt 92%, lát mình đẩy code lên Github cho ae check thử.
+              </p>
+            </div>
+          </div>
+
+          {/* Tin nhắn của bạn */}
+          <div className="flex gap-4 flex-row-reverse">
+            <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm shrink-0">
+              NA
+            </div>
+            <div className="flex flex-col items-end">
+              <div className="flex items-baseline gap-2 mb-1 flex-row-reverse">
+                <span className="text-[13px] font-bold text-slate-900 dark:text-white">Nguyễn Văn An</span>
+                <span className="text-[10px] text-slate-500">Hôm nay lúc 10:26 AM</span>
+              </div>
+              <div className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-lg">
+                <p className="text-[13px] text-slate-800 dark:text-indigo-100 leading-relaxed">
+                  Đỉnh quá! Thế phần UI web để mình lo nốt chiều nay ghép vào luôn.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Khung nhập liệu (Chat Input) */}
+        <div className="p-4 shrink-0 bg-white dark:bg-[#0b1120]">
+          <div className="flex items-end gap-2 bg-slate-50 dark:bg-[#151b28] border border-slate-200 dark:border-slate-800 rounded-xl p-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
+            <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors shrink-0">
+              <Paperclip className="w-4 h-4" />
+            </button>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Nhập tin nhắn vào #đồ-án-ai..."
+              className="flex-1 max-h-32 min-h-[40px] bg-transparent border-none focus:outline-none text-[13px] text-slate-900 dark:text-white placeholder:text-slate-400 resize-none py-2.5"
+              rows={1}
             />
+            <button 
+              disabled={!message.trim()}
+              className="p-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:dark:bg-slate-800 disabled:text-slate-400 text-white rounded-lg transition-colors shrink-0 mb-0.5"
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {groupData.map(group => (
-              <button
-                key={group.id}
-                onClick={() => switchGroup(group.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-[#1e2534] transition-all text-left border-b border-slate-200/50 last:border-b-0 ${
-                  selectedGroupId === group.id ? 'bg-slate-50 dark:bg-[#1e2534]' : ''
-                }`}
-              >
-                <div className={`w-10 h-10 bg-gradient-to-br ${group.color} rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold text-white shadow-md`}>
-                  {group.initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-xs font-semibold text-slate-950 dark:text-white truncate">{group.name}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-gray-400 flex-shrink-0 ml-1">{group.lastTime}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] text-slate-500 dark:text-gray-400 truncate">{group.lastMessage}</p>
-                    {group.unread && group.unread > 0 ? (
-                      <span className="w-4 h-4 bg-blue-500 rounded-full text-[9px] flex items-center justify-center text-white flex-shrink-0 ml-1">
-                        {group.unread}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Chat area */}
-        <div className="flex-1 bg-white dark:bg-[#161b27] border border-slate-200 dark:border-[#252d3d] rounded-2xl flex flex-col overflow-hidden min-w-0">
-          {/* Chat header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-[#252d3d]">
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 bg-gradient-to-br ${selectedGroup.color} rounded-xl flex items-center justify-center text-xs font-bold text-white`}>
-                {selectedGroup.initials}
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-slate-950 dark:text-white">{selectedGroup.name}</div>
-                <div className="text-[10px] text-slate-500 dark:text-gray-400 flex items-center gap-1">
-                  <Users className="w-3 h-3" /> {selectedGroup.members} thành viên
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="w-7 h-7 rounded-lg bg-slate-50 dark:bg-[#1e2534] hover:bg-slate-100 dark:hover:bg-[#252d3d] flex items-center justify-center text-slate-700 dark:text-gray-400 hover:text-white transition-all">
-                <Info className="w-3.5 h-3.5" />
-              </button>
-              <button className="w-7 h-7 rounded-lg bg-slate-50 dark:bg-[#1e2534] hover:bg-slate-100 dark:hover:bg-[#252d3d] flex items-center justify-center text-slate-700 dark:text-gray-400 hover:text-white transition-all">
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            <AnimatePresence>
-              {selectedGroup.messages.map((msg, i) => {
-                const prevMsg = selectedGroup.messages[i - 1];
-                const showSender = !msg.isMe && (!prevMsg || prevMsg.sender !== msg.sender || prevMsg.isMe);
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-end gap-2`}
-                  >
-                    {!msg.isMe && (
-                        <div className={`w-8 h-8 bg-gradient-to-br ${msg.color} rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mb-0.5`}>
-                          {msg.initials}
-                        </div>
-                      )}
-                      <div className={`max-w-[65%] ${msg.isMe ? 'items-end' : 'items-start'} flex flex-col`}>
-                        {showSender && (
-                          <span className="text-[10px] text-slate-500 dark:text-gray-400 mb-1 ml-1">{msg.sender}</span>
-                        )}
-                        <div className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
-                          msg.isMe
-                            ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-br-sm'
-                            : 'bg-white dark:bg-[#1a2030] border border-slate-200 dark:border-[#252d3d] text-slate-950 dark:text-gray-300 rounded-bl-sm'
-                        }`}>
-                          {msg.text}
-                        </div>
-                        <span className={`text-[9px] text-slate-600 dark:text-gray-400 mt-1 ${msg.isMe ? 'text-right' : 'text-left'}`}>
-                          {msg.time}
-                        </span>
-                      </div>
-                    {msg.isMe && (
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mb-0.5">
-                        VA
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Input */}
-          <div className="px-4 py-3 border-t border-slate-200 dark:border-[#252d3d]">
-            <div className="flex items-center gap-2 bg-white dark:bg-[#1a2030] border border-slate-200 dark:border-[#252d3d] rounded-xl px-3 py-2 focus-within:border-blue-500/50 transition-all">
-              <button className="text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0">
-                <Paperclip className="w-4 h-4" />
-              </button>
-              <button className="text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0">
-                <Image className="w-4 h-4" />
-              </button>
-              <input
-                value={inputText}
-                onChange={e => setInputText(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                placeholder={`Nhắn tin vào nhóm ${selectedGroup.name}...`}
-                className="flex-1 bg-transparent text-xs text-slate-950 dark:text-gray-300 placeholder-gray-600 focus:outline-none"
-              />
-              <button className="text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0">
-                <Smile className="w-4 h-4" />
-              </button>
-              <button
-                onClick={sendMessage}
-                disabled={!inputText.trim()}
-                className="w-7 h-7 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-              >
-                <Send className="w-3.5 h-3.5 text-white" />
-              </button>
-            </div>
-          </div>
+          <p className="text-[10px] text-slate-400 mt-2 ml-2">Nhấn Enter để gửi, Shift + Enter để xuống dòng.</p>
         </div>
       </div>
+
+      {/* --- CỘT PHẢI: THÔNG TIN NHÓM (Ẩn trên mobile) --- */}
+      <aside className="w-64 border-l border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-[#151b28] hidden lg:flex flex-col shrink-0">
+        <div className="h-14 px-4 border-b border-slate-200 dark:border-white/10 flex items-center shrink-0">
+          <h3 className="text-[13px] font-bold text-slate-800 dark:text-white">Chi tiết nhóm</h3>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700">
+          
+          {/* Members */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Thành viên — 4</p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5">
+                <div className="relative">
+                  <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">NA</div>
+                  <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-[#151b28]"></div>
+                </div>
+                <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">Nguyễn Văn An (Bạn)</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="relative">
+                  <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] font-bold">TR</div>
+                  <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-[#151b28]"></div>
+                </div>
+                <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">Trần Quốc Bảo</span>
+              </div>
+              <div className="flex items-center gap-2.5 opacity-50">
+                <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-[10px] font-bold">LM</div>
+                <span className="text-[12px] font-medium text-slate-500">Lê Minh</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Shared Files */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Tài liệu chung</p>
+            <div className="space-y-2">
+              <button className="w-full flex items-center gap-2.5 p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-left group">
+                <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">Yeu-cau-do-an.pdf</p>
+                  <p className="text-[9px] text-slate-400">1.2 MB</p>
+                </div>
+              </button>
+              <button className="w-full flex items-center gap-2.5 p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-left group">
+                <ImageIcon className="w-4 h-4 text-purple-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">UI_Mockup_v1.png</p>
+                  <p className="text-[9px] text-slate-400">3.4 MB</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
     </div>
   );
 }
