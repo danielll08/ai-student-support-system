@@ -11,6 +11,7 @@ import {
   BookOpen,
   Settings,
   Bell,
+  Timer // <-- Thêm icon Timer cho Pomodoro
 } from "lucide-react";
 
 interface NavItem {
@@ -26,6 +27,7 @@ const navItems: NavItem[] = [
   { icon: <Kanban size={17} />, label: "Công việc", path: "/dashboard/tasks", color: "#8B5CF6" },
   { icon: <Kanban size={17} />, label: "Kanban Board", path: "/dashboard/kanban", color: "#0EA5E9" },
   { icon: <CalendarDays size={17} />, label: "Lịch học", path: "/dashboard/schedule", color: "#10B981" },
+  { icon: <Timer size={17} />, label: "Pomodoro", path: "/dashboard/pomodoro", color: "#F97316" }, // <-- Thêm mục Pomodoro màu cam/đỏ
   { icon: <Bot size={17} />, label: "AI Assistant", path: "/dashboard/ai-assistant", color: "#8B5CF6" },
   { icon: <Users size={17} />, label: "Nhóm học tập", path: "/dashboard/study-groups", color: "#EC4899" },
 ];
@@ -37,6 +39,7 @@ export function Sidebar() {
   const handleNavClick = (path: string) => {
     navigate(path);
   };
+  
   return (
     <aside className="w-60 shrink-0 flex flex-col h-screen sticky top-0 bg-white dark:bg-[#161b27] transition-colors duration-300" style={{ borderRight: "1px solid #E8EAF0", boxShadow: "2px 0 12px rgba(0,0,0,0.04)" }}>
       {/* Logo */}
@@ -56,7 +59,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto custom-scrollbar">
         <p className="px-3 py-1 mb-1 dark:text-slate-400 transition-colors" style={{ fontSize: "10px", fontWeight: 600, color: "#94A3B8", letterSpacing: "0.1em", textTransform: "uppercase" }}>
           Menu chính
         </p>

@@ -1,16 +1,24 @@
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { CheckSquare, Timer, Clock, TrendingUp, Flame, ArrowUp, ArrowDown, Circle, CheckCircle2, Calendar, Plus, BookMarked, GitPullRequest, Sparkles, ChevronRight, Zap } from 'lucide-react';
 
 export type Page = 'dashboard' | 'tasks' | 'kanban' | 'schedule' | 'pomodoro' | 'ai' | 'groups';
 
-const stats = [
-  { label: "Hoàn thành", value: "12", unit: "nhiệm vụ", icon: <CheckSquare size={20} />, bg: "#F0F4FF", color: "#4F46E5", change: "+3 tuần này", up: true },
-  { label: "Đang làm", value: "3", unit: "nhiệm vụ", icon: <Zap size={20} />, bg: "#FFF7ED", color: "#F97316", change: "2 sắp đến hạn", up: false },
-  { label: "Giờ học", value: "30.7", unit: "giờ", icon: <Clock size={20} />, bg: "#E0F2FE", color: "#0284C7", change: "+5.2h tuần này", up: true },
-  { label: "Hiệu suất", value: "72", unit: "%", icon: <TrendingUp size={20} />, bg: "#F0FDF4", color: "#15803D", change: "+8% tháng này", up: true },
-];
+// --- ĐỊNH NGHĨA KIỂU DỮ LIỆU TỪ KANBAN ---
+type Priority = 'HIGH' | 'MEDIUM' | 'LOW';
+type Status = 'TODO' | 'DOING' | 'DONE';
 
+interface KanbanTask {
+  id: string;
+  title: string;
+  priority: Priority;
+  status: Status;
+  dueDate?: string | null;
+  labels?: string[];
+}
+
+// Dữ liệu mẫu tĩnh (cho các thành phần chưa có dữ liệu thật như Giờ học)
 const weekData = [
   { day: "T2", hours: 2.5, tasks: 3 },
   { day: "T3", hours: 4.2, tasks: 5 },
@@ -19,18 +27,6 @@ const weekData = [
   { day: "T6", hours: 4.8, tasks: 6 },
   { day: "T7", hours: 6.2, tasks: 8 },
   { day: "CN", hours: 3.0, tasks: 4 },
-];
-
-const pieData = [
-  { name: "Hoàn thành", value: 12, color: "#4F46E5" },
-  { name: "Đang làm", value: 3, color: "#E5E7EB" },
-  { name: "Chờ duyệt", value: 5, color: "#BFDBFE" },
-];
-
-const taskList = [
-  { id: 1, title: "Nộp bài tập CSS", subject: "Giao diện", subjectColor: "#4F46E5", dueTime: "Hôm nay 23:59", priority: "high", done: false },
-  { id: 2, title: "Review slide KTM", subject: "Kinh tế", subjectColor: "#F97316", dueTime: "Hôm nay 22:00", priority: "medium", done: false },
-  { id: 3, title: "Commit project React", subject: "Lập trình", subjectColor: "#0284C7", dueTime: "Ngày mai 08:00", priority: "low", done: true },
 ];
 
 const priorityConfig = {
@@ -58,13 +54,101 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
+// Hàm hỗ trợ format ngày hiển thị trên Task
+const formatDueTime = (isoString?: string | null) => {
+  if (!isoString) return 'Không có hạn';
+  const dt = new Date(isoString);
+  const today = new Date();
+  
+  const isToday = dt.getDate() === today.getDate() && dt.getMonth() === today.getMonth() && dt.getFullYear() === today.getFullYear();
+  
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = dt.getDate() === tomorrow.getDate() && dt.getMonth() === tomorrow.getMonth() && dt.getFullYear() === tomorrow.getFullYear();
+  
+  const time = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+  
+  if (isToday) return `Hôm nay ${time}`;
+  if (isTomorrow) return `Ngày mai ${time}`;
+  return `${dt.getDate()}/${dt.getMonth() + 1} ${time}`;
+};
+
+// Hàm sinh màu ngẫu nhiên nhưng cố định cho các Label
+const getSubjectColor = (subject: string) => {
+  const colors = ["#4F46E5", "#F97316", "#0284C7", "#10B981", "#8B5CF6", "#E11D48"];
+  return colors[subject.length % colors.length];
+};
+
 export function Dashboard() {
+  const [tasks, setTasks] = useState<KanbanTask[]>([]);
+
+  // 1. LẤY DỮ LIỆU TỪ KANBAN LOCALSTORAGE
+  useEffect(() => {
+    const storedTasks = window.localStorage.getItem('kanban-board-tasks-v1');
+    if (storedTasks) {
+      try {
+        setTasks(JSON.parse(storedTasks));
+      } catch (e) {
+        console.error('Lỗi phân tích dữ liệu Kanban:', e);
+      }
+    }
+  }, []);
+
+  // 2. TÍNH TOÁN STATS ĐỘNG
+  const dynamicStats = useMemo(() => {
+    const doneCount = tasks.filter(t => t.status === 'DONE').length;
+    const doingCount = tasks.filter(t => t.status === 'DOING').length;
+    const todoCount = tasks.filter(t => t.status === 'TODO').length;
+
+    return [
+      { label: "Hoàn thành", value: doneCount.toString(), unit: "nhiệm vụ", icon: <CheckSquare size={20} />, bg: "#F0F4FF", color: "#4F46E5", change: "Từ Kanban", up: true },
+      { label: "Đang làm", value: doingCount.toString(), unit: "nhiệm vụ", icon: <Zap size={20} />, bg: "#FFF7ED", color: "#F97316", change: `${todoCount} cần làm`, up: false },
+      { label: "Giờ học", value: "30.7", unit: "giờ", icon: <Clock size={20} />, bg: "#E0F2FE", color: "#0284C7", change: "+5.2h tuần này", up: true },
+      { label: "Hiệu suất", value: "72", unit: "%", icon: <TrendingUp size={20} />, bg: "#F0FDF4", color: "#15803D", change: "+8% tháng này", up: true },
+    ];
+  }, [tasks]);
+
+  // 3. TÍNH TOÁN DỮ LIỆU PIE CHART ĐỘNG
+  const dynamicPieData = useMemo(() => {
+    return [
+      { name: "Hoàn thành", value: tasks.filter(t => t.status === 'DONE').length, color: "#4F46E5" },
+      { name: "Đang làm", value: tasks.filter(t => t.status === 'DOING').length, color: "#10B981" },
+      { name: "Cần làm", value: tasks.filter(t => t.status === 'TODO').length, color: "#E5E7EB" },
+    ];
+  }, [tasks]);
+
+  // 4. CHUẨN BỊ DANH SÁCH TASK CHO "CẦN LÀM HÔM NAY"
+  const dynamicTaskList = useMemo(() => {
+    // Ưu tiên hiển thị các task chưa hoàn thành trước, sau đó là có deadline gần
+    return [...tasks]
+      .sort((a, b) => {
+        if (a.status === 'DONE' && b.status !== 'DONE') return 1;
+        if (a.status !== 'DONE' && b.status === 'DONE') return -1;
+        
+        const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+        const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+        return dateA - dateB;
+      })
+      .slice(0, 5) // Chỉ hiển thị top 5
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        subject: t.labels && t.labels.length > 0 ? t.labels[0] : "Chung",
+        subjectColor: getSubjectColor(t.labels && t.labels.length > 0 ? t.labels[0] : "Chung"),
+        dueTime: formatDueTime(t.dueDate),
+        priority: t.priority.toLowerCase() as keyof typeof priorityConfig,
+        done: t.status === 'DONE'
+      }));
+  }, [tasks]);
+
+  // Các biến tính toán chung
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? "Chào buổi sáng" : currentHour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
   const greetingEmoji = currentHour < 12 ? "🌅" : currentHour < 18 ? "☀️" : "🌙";
   const totalHours = weekData.reduce((sum, d) => sum + d.hours, 0).toFixed(1);
-  const total = pieData.reduce((s, d) => s + d.value, 0);
-  const completion = Math.round((pieData[0].value / total) * 100);
+  const totalTasks = tasks.length || 1; // Tránh chia cho 0
+  const completion = Math.round((dynamicPieData[0].value / totalTasks) * 100);
+  const pendingCount = dynamicPieData[1].value + dynamicPieData[2].value; // Đang làm + Cần làm
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: "#F0F2F8" }}>
@@ -96,13 +180,13 @@ export function Dashboard() {
                   {greeting}, Nguyễn! 👋
                 </h1>
                 <p className="text-indigo-200" style={{ fontSize: "14px", maxWidth: "400px", lineHeight: 1.6 }}>
-                  Bạn đang có <strong className="text-white">3 nhiệm vụ</strong> cần hoàn thành hôm nay. Hãy tiếp tục giữ phong độ!
+                  Bạn đang có <strong className="text-white">{pendingCount} nhiệm vụ</strong> cần hoàn thành. Hãy tiếp tục giữ phong độ!
                 </p>
 
                 <div className="flex items-center gap-4 mt-5">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                    <span className="text-indigo-200" style={{ fontSize: "13px" }}>72% mục tiêu tuần</span>
+                    <span className="text-indigo-200" style={{ fontSize: "13px" }}>{completion}% mục tiêu task</span>
                   </div>
                   <div className="w-px h-4 bg-white/20" />
                   <div className="flex items-center gap-2">
@@ -116,7 +200,7 @@ export function Dashboard() {
                 <div className="relative w-24 h-24">
                   <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                     <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="10" />
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#progressGrad)" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 40 * 0.72} ${2 * Math.PI * 40 * 0.28}`} />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#progressGrad)" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 40 * (completion/100)} ${2 * Math.PI * 40 * (1 - completion/100)}`} />
                     <defs>
                       <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor="#A78BFA" />
@@ -125,8 +209,8 @@ export function Dashboard() {
                     </defs>
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-white" style={{ fontSize: "20px", fontWeight: 700 }}>72%</span>
-                    <span className="text-indigo-300" style={{ fontSize: "10px" }}>hiệu suất</span>
+                    <span className="text-white" style={{ fontSize: "20px", fontWeight: 700 }}>{completion}%</span>
+                    <span className="text-indigo-300" style={{ fontSize: "10px" }}>hoàn thành</span>
                   </div>
                 </div>
               </div>
@@ -134,10 +218,10 @@ export function Dashboard() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat) => (
+            {dynamicStats.map((stat) => (
               <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-5 hover:shadow-lg transition-all duration-300 cursor-pointer group" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md" style={{ background: stat.gradient, boxShadow: `0 6px 16px ${stat.color}40` }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md" style={{ background: stat.bg, color: stat.color, boxShadow: `0 6px 16px ${stat.color}40` }}>
                     {stat.icon}
                   </div>
                   <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: stat.up ? "#F0FDF4" : "#FEF3C7", color: stat.up ? "#16A34A" : "#D97706" }}>
@@ -150,7 +234,7 @@ export function Dashboard() {
                   <span className="text-slate-400 mb-0.5" style={{ fontSize: "13px" }}>{stat.unit}</span>
                 </div>
                 <p className="text-slate-500 mt-1.5" style={{ fontSize: "12px", fontWeight: 500 }}>{stat.label}</p>
-                <p className="mt-1" style={{ fontSize: "11px", color: stat.up ? "#16A34A" : "#D97706", fontWeight: 500 }}>{stat.change}</p>
+                <p className="mt-1 truncate" style={{ fontSize: "11px", color: stat.up ? "#16A34A" : "#D97706", fontWeight: 500 }}>{stat.change}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -210,16 +294,16 @@ export function Dashboard() {
         <aside className="w-72 shrink-0 flex flex-col gap-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="bg-white rounded-2xl p-5" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-slate-900" style={{ fontSize: "14px", fontWeight: 700 }}>Tổng tiến độ</h3>
-              <span className="bg-slate-50 text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg" style={{ fontSize: "11px", fontWeight: 500 }}>Tuần này</span>
+              <h3 className="text-slate-900" style={{ fontSize: "14px", fontWeight: 700 }}>Tổng tiến độ (Kanban)</h3>
+              <span className="bg-slate-50 text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg" style={{ fontSize: "11px", fontWeight: 500 }}>Tất cả</span>
             </div>
 
             <div className="flex items-center gap-4">
               <div className="relative w-24 h-24 shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={42} startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
-                      {pieData.map((entry) => (
+                    <Pie data={dynamicPieData} cx="50%" cy="50%" innerRadius={28} outerRadius={42} startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
+                      {dynamicPieData.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
@@ -227,12 +311,11 @@ export function Dashboard() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-slate-900" style={{ fontSize: "20px", fontWeight: 800 }}>{completion}%</span>
-                  <span className="text-slate-400" style={{ fontSize: "9px" }}>hoàn thành</span>
                 </div>
               </div>
 
               <div className="flex-1 space-y-2.5">
-                {pieData.map((item) => (
+                {dynamicPieData.map((item) => (
                   <div key={item.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
@@ -263,49 +346,53 @@ export function Dashboard() {
             <div>
               <p className="text-indigo-900" style={{ fontSize: "12px", fontWeight: 600 }}>Gợi ý từ AI</p>
               <p className="text-indigo-700 mt-0.5" style={{ fontSize: "11px", lineHeight: 1.5 }}>
-                Bạn học hiệu quả nhất vào <strong>19:00–21:00</strong>. Hãy sắp xếp bài khó vào khung giờ này.
+                Bạn đang có <strong>{pendingCount} task chưa xong</strong>. Hãy áp dụng phương pháp Pomodoro để tập trung hơn nhé.
               </p>
             </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white rounded-2xl p-5 flex-1" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-slate-900" style={{ fontSize: "14px", fontWeight: 700 }}>Cần làm hôm nay</h3>
+              <h3 className="text-slate-900" style={{ fontSize: "14px", fontWeight: 700 }}>Danh sách Kanban</h3>
               <button className="text-indigo-500 hover:text-indigo-700 transition-colors" style={{ fontSize: "12px", fontWeight: 600 }}>
-                Xem tất cả
+                {tasks.length} task
               </button>
             </div>
 
             <div className="space-y-2.5">
-              {taskList.map((task) => {
-                const pConfig = priorityConfig[task.priority as keyof typeof priorityConfig];
-                return (
-                  <div key={task.id} className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer group ${task.done ? "opacity-60" : "hover:border-indigo-200 hover:shadow-sm"}`} style={{ borderColor: "#F1F5F9", background: task.done ? "#FAFAFA" : "#fff" }}>
-                    <button className="mt-0.5 shrink-0 transition-colors">
-                      {task.done ? (
-                        <CheckCircle2 size={16} className="text-indigo-400" />
-                      ) : (
-                        <Circle size={16} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />
-                      )}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <p className={`truncate ${task.done ? "line-through text-slate-400" : "text-slate-800"}`} style={{ fontSize: "13px", fontWeight: 500 }}>
-                        {task.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="px-2 py-0.5 rounded-md" style={{ fontSize: "10px", fontWeight: 600, color: task.subjectColor, background: `${task.subjectColor}15` }}>
-                          {task.subject}
-                        </span>
-                        <Clock size={9} className="text-slate-400" />
-                        <span className="text-slate-400" style={{ fontSize: "10px" }}>{task.dueTime}</span>
+              {dynamicTaskList.length === 0 ? (
+                <p className="text-center text-sm text-gray-500 py-4">Chưa có công việc nào. Hãy sang bảng Kanban để thêm!</p>
+              ) : (
+                dynamicTaskList.map((task) => {
+                  const pConfig = priorityConfig[task.priority] || priorityConfig.medium;
+                  return (
+                    <div key={task.id} className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer group ${task.done ? "opacity-60" : "hover:border-indigo-200 hover:shadow-sm"}`} style={{ borderColor: "#F1F5F9", background: task.done ? "#FAFAFA" : "#fff" }}>
+                      <button className="mt-0.5 shrink-0 transition-colors">
+                        {task.done ? (
+                          <CheckCircle2 size={16} className="text-indigo-400" />
+                        ) : (
+                          <Circle size={16} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`truncate ${task.done ? "line-through text-slate-400" : "text-slate-800"}`} style={{ fontSize: "13px", fontWeight: 500 }}>
+                          {task.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="px-2 py-0.5 rounded-md" style={{ fontSize: "10px", fontWeight: 600, color: task.subjectColor, background: `${task.subjectColor}15` }}>
+                            {task.subject}
+                          </span>
+                          <Clock size={9} className="text-slate-400" />
+                          <span className="text-slate-400 truncate max-w-[80px]" style={{ fontSize: "10px" }}>{task.dueTime}</span>
+                        </div>
                       </div>
+                      <span className="shrink-0 px-2 py-0.5 rounded-lg" style={{ fontSize: "10px", fontWeight: 600, color: pConfig.color, background: pConfig.bg }}>
+                        {pConfig.label}
+                      </span>
                     </div>
-                    <span className="shrink-0 px-2 py-0.5 rounded-lg" style={{ fontSize: "10px", fontWeight: 600, color: pConfig.color, background: pConfig.bg }}>
-                      {pConfig.label}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
             <div className="mt-5 pt-4" style={{ borderTop: "1px solid #F1F5F9" }}>
@@ -314,7 +401,7 @@ export function Dashboard() {
                 {[
                   { icon: <Plus size={14} />, label: "Thêm nhiệm vụ", color: "#6366F1", bg: "#EEF2FF" },
                   { icon: <BookMarked size={14} />, label: "Ghi chú nhanh", color: "#0EA5E9", bg: "#F0F9FF" },
-                  { icon: <GitPullRequest size={14} />, label: "Thêm dự án", color: "#10B981", bg: "#F0FDF4" },
+                  { icon: <GitPullRequest size={14} />, label: "Mở bảng Kanban", color: "#10B981", bg: "#F0FDF4" },
                 ].map((action) => (
                   <button key={action.label} className="w-full flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-slate-50 transition-all group text-left">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: action.bg, color: action.color }}>
